@@ -139,6 +139,7 @@
     let position = { top: 90, right: 20 };
     let lastPlan = [];
     let lastResult = null;
+    let stoppedMessage = null;
 
     document.documentElement.appendChild(host);
 
@@ -236,12 +237,25 @@
       body.className = 'jf-body';
       contentArea.appendChild(body);
 
+      if (stoppedMessage) {
+        renderStopped(body, stoppedMessage);
+        return;
+      }
+
       if (lastResult) {
         renderResult(body, lastResult);
       } else {
         renderSummary(body, lastPlan);
       }
       renderUnresolvedList(body, lastPlan);
+    }
+
+    function renderStopped(body, message) {
+      const warning = document.createElement('div');
+      warning.className = 'jf-empty';
+      warning.style.color = '#b8860b';
+      warning.textContent = message;
+      body.appendChild(warning);
     }
 
     function renderSummary(body, plan) {
@@ -337,12 +351,18 @@
 
     return {
       updatePlan(plan) {
+        if (stoppedMessage) return;
         lastPlan = plan;
         lastResult = null;
         render();
       },
       showResult(result) {
         lastResult = result;
+        render();
+      },
+      showStopped(message) {
+        stoppedMessage = message;
+        minimized = false;
         render();
       },
       destroy() {

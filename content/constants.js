@@ -186,6 +186,14 @@
     MEDIUM: 60
   };
 
+  // Hard safety cap. A page reporting more fields than this is almost
+  // certainly not a real job application form but something pathological
+  // (a component library exposing internal implementation-detail inputs
+  // through Shadow DOM, a page that mutates constantly, etc.) — past this
+  // point JobFill stops scanning/observing that page entirely rather than
+  // risk degrading it further.
+  const MAX_DETECTED_FIELDS = 50;
+
   const DEFAULT_SETTINGS = {
     showWidget: true,
     autoDetectForms: true,
@@ -203,6 +211,7 @@
     FIELD_SIGNALS,
     SENSITIVE_PATTERNS,
     CONFIDENCE,
-    DEFAULT_SETTINGS
+    DEFAULT_SETTINGS,
+    MAX_DETECTED_FIELDS
   };
 })();

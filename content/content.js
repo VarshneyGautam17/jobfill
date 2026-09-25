@@ -9,6 +9,8 @@
   let siteMappings = {};
   let plan = [];
   let widget = null;
+  let observerHandle = null;
+  let stopped = false;
 
   function loadAll(cb) {
     chrome.storage.local.get(['profiles', 'activeProfileId', 'settings', 'siteMappings'], (res) => {
@@ -119,12 +121,32 @@
     return record.labelText || record.placeholder || record.name || record.id || 'Unnamed field';
   }
 
+  // Hard safety cap (see constants.js MAX_DETECTED_FIELDS / detector.js):
+  // once tripped, stop scanning AND fully disconnect the MutationObserver
+  // — not just the detector — so a pathological page (a component library
+  // exposing hundreds of internal inputs through Shadow DOM, or one that
+  // mutates constantly) can't keep costing CPU after we've given up on it.
+  function stopIfDetectorTripped() {
+    if (stopped || !window.JobFillDetector.isStopped()) return;
+    stopped = true;
+    if (observerHandle) observerHandle.disconnect();
+    ensureWidget();
+    if (widget) {
+      widget.showStopped(
+        `⚠ JobFill stopped: this page has an unusually large number of fields (50+), ` +
+          `more than can be handled safely. Detection has been turned off here.`
+      );
+    }
+  }
+
   function scanAndRender() {
     const records = window.JobFillDetector.scan(document);
-    if (!records.length) return;
-    const newPlan = rebuildPlan(records);
-    plan = plan.concat(newPlan);
-    if (!settings.autoDetectForms) return;
+    if (records.length) {
+      const newPlan = rebuildPlan(records);
+      plan = plan.concat(newPlan);
+    }
+    stopIfDetectorTripped();
+    if (stopped || !settings.autoDetectForms) return;
     ensureWidget();
     if (widget) widget.updatePlan(plan);
   }
@@ -133,10 +155,13 @@
     loadAll(() => {
       if (!profile) return; // no profile configured yet — stay silent
       scanAndRender();
-      window.JobFillObserver.start((newRecords) => {
+      if (stopped) return;
+      observerHandle = window.JobFillObserver.start((newRecords) => {
+        if (stopped) return;
         const newPlan = rebuildPlan(newRecords);
         plan = plan.concat(newPlan);
-        if (!settings.autoDetectForms) return;
+        stopIfDetectorTripped();
+        if (stopped || !settings.autoDetectForms) return;
         ensureWidget();
         if (widget) widget.updatePlan(plan);
       });
@@ -151,12 +176,16 @@
     if (msg && msg.type === 'JOBFILL_GET_STATUS') {
       const fillable = plan.filter((p) => p.status === 'fill' || p.status === 'fill-review').length;
       const review = plan.filter((p) => p.status === 'unresolved' || p.status === 'empty' || p.status === 'review').length;
-      sendResponse({ ok: true, detected: plan.length, ready: fillable, review, hasProfile: !!profile });
+      sendResponse({ ok: true, detected: plan.length, ready: fillable, review, hasProfile: !!profile, stopped });
       return;
     }
     if (msg && msg.type === 'JOBFILL_AUTOFILL') {
       if (!profile) {
         sendResponse({ ok: false, error: 'no-profile' });
+        return;
+      }
+      if (stopped) {
+        sendResponse({ ok: false, error: 'stopped' });
         return;
       }
       ensureWidget();

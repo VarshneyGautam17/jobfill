@@ -24,6 +24,8 @@ No build step — it's plain HTML/CSS/JS, so any edit just needs a reload of the
 - **Floating widget**: draggable, minimizable, dismissible, shadow-DOM isolated, unknown-field picker that teaches JobFill your correction (`content/widget.js`)
 - **Learning system**: per-domain field-key → field-type mappings, editable/removable from the options page
 - **Sensitive-field blocklist**: passwords, OTP, CVV/CVC, card/bank/UPI numbers — never auto-filled, checked before anything else
+- **Shadow DOM support**: many modern component libraries (SmartRecruiters, Workday, various design systems) render real fields inside a custom element's shadow root, invisible to plain `document.querySelectorAll` — detection, label lookup, dynamic-field observation, and event dispatch are all shadow-aware
+- **Safety caps**: a hard 50-field limit stops detection entirely (and disconnects the `MutationObserver`) on pathological pages, and a circuit breaker backs off if a page mutates unusually often — both added after a real incident where a component-heavy SPA froze the tab
 - **Application Questions**, **Privacy** (export/import/delete all data, local stats), **Settings** (widget visibility, auto-detect, confirm-before-autofill, confidence thresholds, theme)
 
 ## Deliberate MVP boundaries (per PRD non-goals)
@@ -46,7 +48,7 @@ npm install
 npm test
 ```
 
-Currently 58/58 checks pass (38 pipeline tests + 20 UI smoke tests).
+Currently 77/77 checks pass via `npm test` (pipeline, Shadow DOM, the 50-field safety cap, the full stop-sequence integration, and UI smoke tests). `npm run test:stress` runs a slower (~8s) mutation-storm/circuit-breaker test separately, since it needs real wall-clock time.
 
 ## CI / releases
 

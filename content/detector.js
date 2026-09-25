@@ -77,13 +77,29 @@
     };
   }
 
+  const MAX_FIELDS = window.JobFillConstants.MAX_DETECTED_FIELDS;
+  let totalReturned = 0;
+  let stopped = false;
+
   // Scans `root` (default document) for unseen fillable fields.
   // Returns an array of field records (see buildRecord/buildRadioGroupRecord).
+  //
+  // Hard-capped at MAX_FIELDS total per page: past that, this page is
+  // almost certainly not a real form (see constants.js), so scanning
+  // short-circuits immediately — no DOM query at all — on every call from
+  // then on, and the expensive per-field metadata extraction (label/nearby
+  // text lookups) is bounded to the remaining budget even on the call that
+  // crosses the threshold, rather than only stopping *after* processing an
+  // unbounded burst.
   function scan(root) {
+    if (stopped) return [];
     root = root || document;
-    const candidates = window.JobFillUtils.deepQuerySelectorAll(root, 'input, select, textarea').filter(
+
+    const remainingBudget = MAX_FIELDS - totalReturned;
+    const allCandidates = window.JobFillUtils.deepQuerySelectorAll(root, 'input, select, textarea').filter(
       (el) => isRelevant(el) && !el.dataset.jobfillSeen
     );
+    const candidates = allCandidates.slice(0, remainingBudget);
 
     const records = [];
     const radioGroups = new Map();
@@ -106,8 +122,21 @@
       records.push(buildRadioGroupRecord(name, radios));
     });
 
+    totalReturned += records.length;
+    if (totalReturned >= MAX_FIELDS || allCandidates.length > candidates.length) {
+      stopped = true;
+      console.warn(
+        `[JobFill] This page has an unusually large number of fields (50+) — stopping detection here for safety. ` +
+          `Use the extension popup if you still want to try filling what was found.`
+      );
+    }
+
     return records;
   }
 
-  window.JobFillDetector = { scan };
+  function isStopped() {
+    return stopped;
+  }
+
+  window.JobFillDetector = { scan, isStopped };
 })();

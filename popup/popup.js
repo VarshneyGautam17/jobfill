@@ -58,6 +58,11 @@
           autofillBtn.disabled = true;
           return;
         }
+        if (response.stopped) {
+          pageStatusEl.textContent = 'Stopped: too many fields on this page (50+). Autofill disabled here for safety.';
+          autofillBtn.disabled = true;
+          return;
+        }
         pageStatusEl.textContent = `${response.detected} fields detected · ${response.ready} ready to fill`;
         autofillBtn.disabled = response.ready === 0;
       });
