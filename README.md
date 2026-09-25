@@ -25,6 +25,7 @@ No build step — it's plain HTML/CSS/JS, so any edit just needs a reload of the
 - **Learning system**: per-domain field-key → field-type mappings, editable/removable from the options page
 - **Sensitive-field blocklist**: passwords, OTP, CVV/CVC, card/bank/UPI numbers — never auto-filled, checked before anything else
 - **Shadow DOM support**: many modern component libraries (SmartRecruiters, Workday, various design systems) render real fields inside a custom element's shadow root, invisible to plain `document.querySelectorAll` — detection, label lookup, dynamic-field observation, and event dispatch are all shadow-aware
+- **Label-signal filtering**: a field only counts as detected if it has a real `<label>`, placeholder, aria-label, or meaningful autocomplete token — piercing shadow roots also reaches cookie banners/chat widgets/search boxes present on almost any site, and their internal inputs are usually completely unlabeled noise ("q", "w", etc.)
 - **Safety caps**: a hard 50-field limit stops detection entirely (and disconnects the `MutationObserver`) on pathological pages, and a circuit breaker backs off if a page mutates unusually often — both added after a real incident where a component-heavy SPA froze the tab
 - **Application Questions**, **Privacy** (export/import/delete all data, local stats), **Settings** (widget visibility, auto-detect, confirm-before-autofill, confidence thresholds, theme)
 
@@ -48,7 +49,7 @@ npm install
 npm test
 ```
 
-Currently 77/77 checks pass via `npm test` (pipeline, Shadow DOM, the 50-field safety cap, the full stop-sequence integration, and UI smoke tests). `npm run test:stress` runs a slower (~8s) mutation-storm/circuit-breaker test separately, since it needs real wall-clock time.
+Currently 81/81 checks pass via `npm test` (pipeline, Shadow DOM, label-signal filtering, the 50-field safety cap, the full stop-sequence integration, and UI smoke tests). `npm run test:stress` runs a slower (~8s) mutation-storm/circuit-breaker test separately, since it needs real wall-clock time.
 
 ## CI / releases
 

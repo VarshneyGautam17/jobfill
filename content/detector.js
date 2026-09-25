@@ -25,6 +25,22 @@
     return false;
   }
 
+  // Piercing shadow roots also reaches into things present on almost every
+  // site (cookie-consent banners, chat widgets, search boxes, third-party
+  // embeds) whose internal inputs are often completely unlabeled — no
+  // <label>, no placeholder, no aria-label, nothing a real user would ever
+  // see as a prompt. A real form field always gives the person filling it
+  // SOME indication of what goes there. name/id alone don't count: minified
+  // or generic values like "q" or "w" carry no information for a user.
+  function hasIdentifyingSignal(record) {
+    return !!(
+      record.labelText ||
+      record.placeholder ||
+      record.ariaLabel ||
+      (record.autocomplete && record.autocomplete !== 'off')
+    );
+  }
+
   function extractOptions(selectEl) {
     return Array.from(selectEl.options || []).map((o) => ({ value: o.value, text: o.textContent.trim() }));
   }
@@ -78,30 +94,37 @@
   }
 
   const MAX_FIELDS = window.JobFillConstants.MAX_DETECTED_FIELDS;
+  // Bounds how many raw (pre-filter) candidates get their expensive
+  // metadata built in a single scan() call, purely to avoid janking on one
+  // synchronous pass over a huge candidate pool. This is deliberately
+  // decoupled from MAX_FIELDS below: most raw candidates on a noisy page
+  // (cookie banners, chat widgets, third-party embeds) turn out to be
+  // unlabeled and get filtered out by hasIdentifyingSignal, so raw
+  // candidate volume alone must never be treated as "too many real fields"
+  // — only a genuine count of labeled fields should ever trip the cap.
+  const MAX_RAW_PER_SCAN = 300;
   let totalReturned = 0;
   let stopped = false;
 
   // Scans `root` (default document) for unseen fillable fields.
   // Returns an array of field records (see buildRecord/buildRadioGroupRecord).
   //
-  // Hard-capped at MAX_FIELDS total per page: past that, this page is
-  // almost certainly not a real form (see constants.js), so scanning
-  // short-circuits immediately — no DOM query at all — on every call from
-  // then on, and the expensive per-field metadata extraction (label/nearby
-  // text lookups) is bounded to the remaining budget even on the call that
-  // crosses the threshold, rather than only stopping *after* processing an
-  // unbounded burst.
+  // Hard-capped at MAX_FIELDS *real, identifiably-labeled* fields per page:
+  // past that, this page is almost certainly not a real form (see
+  // constants.js), so scanning short-circuits immediately — no DOM query at
+  // all — on every call from then on.
   function scan(root) {
     if (stopped) return [];
     root = root || document;
 
-    const remainingBudget = MAX_FIELDS - totalReturned;
     const allCandidates = window.JobFillUtils.deepQuerySelectorAll(root, 'input, select, textarea').filter(
-      (el) => isRelevant(el) && !el.dataset.jobfillSeen
+      (el) => !el.dataset.jobfillSeen && isRelevant(el)
     );
-    const candidates = allCandidates.slice(0, remainingBudget);
+    // Any candidates beyond this chunk are simply left unmarked and picked
+    // up by a later scan call — not a sign of a pathological page by itself.
+    const candidates = allCandidates.slice(0, MAX_RAW_PER_SCAN);
 
-    const records = [];
+    const built = [];
     const radioGroups = new Map();
 
     candidates.forEach((el) => {
@@ -114,19 +137,27 @@
         if (!radioGroups.has(key)) radioGroups.set(key, []);
         radioGroups.get(key).push(el);
       } else {
-        records.push(buildRecord(el));
+        built.push(buildRecord(el));
       }
     });
 
     radioGroups.forEach((radios, name) => {
-      records.push(buildRadioGroupRecord(name, radios));
+      built.push(buildRadioGroupRecord(name, radios));
     });
 
+    // Only fields with a real identifying signal count toward what's
+    // returned/detected — silently-processed noise never shows up in the
+    // widget and never eats into the safety cap.
+    let records = built.filter(hasIdentifyingSignal);
+
+    const remainingBudget = MAX_FIELDS - totalReturned;
+    if (records.length > remainingBudget) records = records.slice(0, remainingBudget);
     totalReturned += records.length;
-    if (totalReturned >= MAX_FIELDS || allCandidates.length > candidates.length) {
+
+    if (totalReturned >= MAX_FIELDS) {
       stopped = true;
       console.warn(
-        `[JobFill] This page has an unusually large number of fields (50+) — stopping detection here for safety. ` +
+        `[JobFill] This page has an unusually large number of real form fields (50+) — stopping detection here for safety. ` +
           `Use the extension popup if you still want to try filling what was found.`
       );
     }
