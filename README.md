@@ -47,3 +47,14 @@ npm test
 ```
 
 Currently 58/58 checks pass (38 pipeline tests + 20 UI smoke tests).
+
+## CI / releases
+
+`.github/workflows/ci.yml` runs on every push and PR: validates `manifest.json` (parses, every referenced file exists) and runs the full test suite. It cannot reach into your local Chrome — there's no such thing as GitHub pushing an update into an unpacked/developer-mode extension, that's a Chrome platform limitation, not something CI can work around. What it *does* give you: broken code gets caught before you ever reload the extension yourself, and on every push to `master`/`main` it packages the extension into a `.zip` and uploads it as a downloadable build artifact.
+
+To cut a versioned release:
+
+1. Bump `"version"` in `manifest.json`
+2. `git tag v1.0.1 && git push origin v1.0.1`
+
+`.github/workflows/release.yml` then validates, tests, packages, and publishes a GitHub Release with the `.zip` attached — tag version and manifest version must match, or it fails on purpose rather than shipping a mislabeled build.

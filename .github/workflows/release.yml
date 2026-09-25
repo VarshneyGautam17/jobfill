@@ -1,0 +1,47 @@
+name: Release
+
+# Triggered by pushing a version tag, e.g.:
+#   git tag v1.0.1 && git push origin v1.0.1
+# Bump "version" in manifest.json to match the tag before tagging.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run validate
+      - run: npm test
+
+      - name: Check manifest version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
+          if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "Tag is v$TAG_VERSION but manifest.json version is $MANIFEST_VERSION — bump manifest.json first."
+            exit 1
+          fi
+
+      - name: Build extension zip
+        run: npm run package
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.zip \
+            --title "JobFill $GITHUB_REF_NAME" \
+            --generate-notes
