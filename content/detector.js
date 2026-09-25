@@ -70,7 +70,7 @@
   // Returns an array of field records (see buildRecord/buildRadioGroupRecord).
   function scan(root) {
     root = root || document;
-    const candidates = Array.from(root.querySelectorAll('input, select, textarea')).filter(
+    const candidates = window.JobFillUtils.deepQuerySelectorAll(root, 'input, select, textarea').filter(
       (el) => isRelevant(el) && !el.dataset.jobfillSeen
     );
 

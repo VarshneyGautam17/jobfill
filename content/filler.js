@@ -12,8 +12,13 @@
     } else {
       el.value = value;
     }
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    // composed: true lets the event cross out of a Shadow DOM boundary,
+    // matching how a real user-driven input event behaves — needed for
+    // components (SmartRecruiters, Workday, etc.) whose field lives inside
+    // a custom element's shadow root while the app's own listener sits
+    // higher up in the light DOM.
+    el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
   function setChecked(el, checked) {
@@ -24,8 +29,8 @@
     } else {
       el.checked = checked;
     }
-    el.dispatchEvent(new Event('click', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new Event('click', { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
   // Fills a single planned item (see mapper.js). Returns true on success.

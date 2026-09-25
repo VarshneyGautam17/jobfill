@@ -55,20 +55,24 @@
     });
   }
 
-  // Resolves the visible label text associated with a form element.
+  // Resolves the visible label text associated with a form element. Uses
+  // getRootNode() rather than `document` so this also works for fields
+  // rendered inside a Shadow DOM component, where the <label> usually
+  // lives in the same shadow root, not the top-level document.
   function getLabelText(el) {
+    const root = el.getRootNode();
     const texts = [];
-    if (el.id) {
-      const labelFor = document.querySelector(`label[for="${cssEscape(el.id)}"]`);
+    if (el.id && root.querySelector) {
+      const labelFor = root.querySelector(`label[for="${cssEscape(el.id)}"]`);
       if (labelFor) texts.push(labelFor.textContent);
     }
     const closestLabel = el.closest('label');
     if (closestLabel) texts.push(closestLabel.textContent);
 
     const ariaLabelledBy = el.getAttribute('aria-labelledby');
-    if (ariaLabelledBy) {
+    if (ariaLabelledBy && root.getElementById) {
       ariaLabelledBy.split(/\s+/).forEach((id) => {
-        const node = document.getElementById(id);
+        const node = root.getElementById(id);
         if (node) texts.push(node.textContent);
       });
     }
@@ -102,6 +106,32 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  // document.querySelectorAll never looks inside a Shadow DOM (used
+  // heavily by modern component libraries, e.g. SmartRecruiters/Workday
+  // wrap every field in a custom element with its own open shadow root).
+  // This walks into every open shadow root under `root` and collects
+  // matches from all of them, so detection works the same either way.
+  function deepQuerySelectorAll(root, selector) {
+    const results = Array.from(root.querySelectorAll(selector));
+    root.querySelectorAll('*').forEach((el) => {
+      if (el.shadowRoot) results.push(...deepQuerySelectorAll(el.shadowRoot, selector));
+    });
+    return results;
+  }
+
+  // Recursively finds every open shadow root nested under `root`
+  // (root itself included if it is already a shadow root).
+  function collectShadowRoots(root) {
+    const roots = [];
+    root.querySelectorAll('*').forEach((el) => {
+      if (el.shadowRoot) {
+        roots.push(el.shadowRoot);
+        roots.push(...collectShadowRoots(el.shadowRoot));
+      }
+    });
+    return roots;
+  }
+
   window.JobFillUtils = {
     normalize,
     containsPhrase,
@@ -112,6 +142,8 @@
     getLabelText,
     getNearbyText,
     fireExtractionEvents,
-    cssEscape
+    cssEscape,
+    deepQuerySelectorAll,
+    collectShadowRoots
   };
 })();
