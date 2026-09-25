@@ -8,55 +8,78 @@
 // wrap every field in a custom element with its own open shadow root, so
 // this file also has to discover and attach to those roots, including
 // ones that appear later as the page keeps rendering.
+//
+// IMPORTANT: all of that discovery work is expensive (recursive DOM
+// walks), so it must never run synchronously per raw mutation event on a
+// component-heavy page that mutates constantly — that pegs the CPU and
+// can freeze the tab. Everything heavy is batched into a single debounced
+// pass, with a circuit breaker that backs off entirely if the page is
+// mutating unusually often.
 (function () {
-  const RELEVANT_TAGS = new Set(['INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'FIELDSET']);
-
-  function nodeLooksRelevant(node) {
-    if (node.nodeType !== 1) return false;
-    if (RELEVANT_TAGS.has(node.tagName)) return true;
-    if (node.shadowRoot) return true;
-    if (node.tagName.includes('-')) return true; // custom element (Web Components require a hyphen)
-    if (node.querySelector && node.querySelector('input, select, textarea')) return true;
-    return false;
-  }
-
-  // Observes `root`, then recursively observes every open shadow root
-  // already nested inside it, so pre-existing shadow trees are covered
-  // from the start.
-  function observeDeep(observer, root) {
-    observer.observe(root, { childList: true, subtree: true });
-    window.JobFillUtils.collectShadowRoots(root).forEach((shadowRoot) => {
-      observer.observe(shadowRoot, { childList: true, subtree: true });
-    });
-  }
+  const DEBOUNCE_MS = 500;
+  // The debounce itself already caps the max sustained flush rate to
+  // ~WINDOW_MS/DEBOUNCE_MS (~10 per 5s here), so this must be set well
+  // below that ceiling or it can never actually trigger. This backs off
+  // once a page has needed a rescan unusually often for a few seconds
+  // straight, rather than only reacting to a single instantaneous burst
+  // (which the debounce alone already handles).
+  const MAX_RUNS_PER_WINDOW = 6;
+  const WINDOW_MS = 5000;
 
   function start(onNewFields) {
-    const debouncedScan = window.JobFillUtils.debounce(() => {
+    const observedRoots = new WeakSet();
+    let pendingNodes = [];
+    let runTimestamps = [];
+    let backingOff = false;
+
+    function observeIfNew(root) {
+      if (observedRoots.has(root)) return;
+      observedRoots.add(root);
+      observer.observe(root, { childList: true, subtree: true });
+    }
+
+    const flush = window.JobFillUtils.debounce(() => {
+      const now = Date.now();
+      runTimestamps = runTimestamps.filter((t) => now - t < WINDOW_MS);
+      runTimestamps.push(now);
+
+      if (runTimestamps.length > MAX_RUNS_PER_WINDOW) {
+        if (!backingOff) {
+          backingOff = true;
+          console.warn(
+            '[JobFill] This page is mutating very frequently — pausing automatic re-scans to avoid slowing it down. ' +
+              'Use the extension popup to Autofill manually instead.'
+          );
+        }
+        pendingNodes = [];
+        return;
+      }
+      backingOff = false;
+
+      const nodesToCheck = pendingNodes;
+      pendingNodes = [];
+      nodesToCheck.forEach((node) => {
+        if (node.shadowRoot) observeIfNew(node.shadowRoot);
+        window.JobFillUtils.collectShadowRoots(node).forEach(observeIfNew);
+      });
+
       const newRecords = window.JobFillDetector.scan(document);
       if (newRecords.length) onNewFields(newRecords);
-    }, 500);
+    }, DEBOUNCE_MS);
 
     const observer = new MutationObserver((mutations) => {
-      let relevant = false;
       mutations.forEach((mutation) => {
         if (mutation.type !== 'childList') return;
         mutation.addedNodes.forEach((node) => {
-          if (node.nodeType !== 1) return;
-          if (nodeLooksRelevant(node)) relevant = true;
-          // A newly-inserted custom element may already carry its own
-          // shadow root (attached synchronously in its constructor) —
-          // start observing it too so fields added inside it later are
-          // still caught.
-          if (node.shadowRoot) observeDeep(observer, node.shadowRoot);
-          window.JobFillUtils.collectShadowRoots(node).forEach((shadowRoot) => {
-            observer.observe(shadowRoot, { childList: true, subtree: true });
-          });
+          if (node.nodeType === 1) pendingNodes.push(node);
         });
       });
-      if (relevant) debouncedScan();
+      if (pendingNodes.length) flush();
     });
 
-    observeDeep(observer, document.documentElement);
+    observeIfNew(document.documentElement);
+    window.JobFillUtils.collectShadowRoots(document.documentElement).forEach(observeIfNew);
+
     return observer;
   }
 

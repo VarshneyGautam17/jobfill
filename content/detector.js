@@ -4,8 +4,19 @@
 (function () {
   const SKIP_TYPES = new Set(['hidden', 'submit', 'button', 'reset', 'image', 'file']);
 
+  // Piercing every shadow root on a component-heavy page also surfaces
+  // internal implementation-detail inputs (a dropdown's hidden filter box,
+  // a combobox's shadow-internal <select>, etc.) that aren't real
+  // user-facing fields. Skip anything not actually visible/exposed.
+  function isVisible(el) {
+    if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+    const style = getComputedStyle(el);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  }
+
   function isRelevant(el) {
     const tag = el.tagName.toLowerCase();
+    if (!isVisible(el)) return false;
     if (tag === 'select' || tag === 'textarea') return true;
     if (tag === 'input') {
       const type = (el.getAttribute('type') || 'text').toLowerCase();
