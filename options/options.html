@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JobFill Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">⚡ JobFill</div>
+      <nav>
+        <button class="tab-btn" data-tab="profile">Profile</button>
+        <button class="tab-btn" data-tab="profiles">Profiles</button>
+        <button class="tab-btn" data-tab="mappings">Field Mappings</button>
+        <button class="tab-btn" data-tab="questions">Application Questions</button>
+        <button class="tab-btn" data-tab="privacy">Privacy</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <!-- PROFILE EDITOR -->
+      <section id="tab-profile" class="panel">
+        <h1>Profile Editor</h1>
+        <div class="field-row">
+          <label>Profile Nickname
+            <input type="text" id="p_name" placeholder="e.g. MERN Developer" />
+          </label>
+        </div>
+
+        <h2>Personal</h2>
+        <div class="grid">
+          <label>First Name<input type="text" id="p_firstName" /></label>
+          <label>Middle Name<input type="text" id="p_middleName" /></label>
+          <label>Last Name<input type="text" id="p_lastName" /></label>
+          <label>Full Name<input type="text" id="p_fullName" placeholder="Auto-filled from first + last if left blank" /></label>
+          <label>Email<input type="email" id="p_email" /></label>
+          <label>Phone<input type="tel" id="p_phone" /></label>
+          <label>Address<input type="text" id="p_address" /></label>
+          <label>City<input type="text" id="p_city" /></label>
+          <label>State<input type="text" id="p_state" /></label>
+          <label>Country<input type="text" id="p_country" /></label>
+          <label>ZIP / Postal Code<input type="text" id="p_zip" /></label>
+        </div>
+
+        <h2>Professional</h2>
+        <div class="grid">
+          <label>Job Title<input type="text" id="p_jobTitle" /></label>
+          <label>Current Company<input type="text" id="p_company" /></label>
+          <label>Years of Experience<input type="text" id="p_experienceYears" /></label>
+          <label>Employment Type<input type="text" id="p_employmentType" placeholder="Full-time / Contract" /></label>
+          <label>Current Salary<input type="text" id="p_currentSalary" /></label>
+          <label>Expected Salary<input type="text" id="p_expectedSalary" /></label>
+          <label>Notice Period<input type="text" id="p_noticePeriod" /></label>
+        </div>
+        <label class="full">Skills (comma separated)<textarea id="p_skills" rows="2"></textarea></label>
+        <label class="full">Professional Summary<textarea id="p_summary" rows="3"></textarea></label>
+
+        <h2>Links</h2>
+        <div class="grid">
+          <label>LinkedIn<input type="url" id="p_linkedin" /></label>
+          <label>GitHub<input type="url" id="p_github" /></label>
+          <label>Portfolio<input type="url" id="p_portfolio" /></label>
+          <label>Stack Overflow<input type="url" id="p_stackoverflow" /></label>
+          <label>Personal Website<input type="url" id="p_website" /></label>
+        </div>
+
+        <h2>Education</h2>
+        <div class="grid">
+          <label>Degree<input type="text" id="p_degree" /></label>
+          <label>University / College<input type="text" id="p_university" /></label>
+          <label>Field of Study<input type="text" id="p_fieldOfStudy" /></label>
+          <label>Start Year<input type="text" id="p_startYear" /></label>
+          <label>End Year<input type="text" id="p_endYear" /></label>
+          <label>GPA / Percentage<input type="text" id="p_gpa" /></label>
+        </div>
+
+        <h2>Application Preferences</h2>
+        <div class="grid">
+          <label>Work Authorization<input type="text" id="p_workAuthorization" placeholder="Yes / No / Visa required" /></label>
+          <label>Willing to Relocate<input type="text" id="p_relocation" placeholder="Yes / No" /></label>
+          <label>Remote Preference<input type="text" id="p_remotePreference" placeholder="Remote / Hybrid / Onsite" /></label>
+          <label>Requires Sponsorship<input type="text" id="p_sponsorship" placeholder="Yes / No" /></label>
+        </div>
+
+        <h2>Resumes</h2>
+        <p class="hint">JobFill stores resume references only — browsers don't allow extensions to auto-attach files to a file input for security reasons, so you'll still attach the file yourself.</p>
+        <div id="resumeList"></div>
+        <button class="secondary-btn" id="addResumeBtn">+ Add Resume Reference</button>
+
+        <div class="actions">
+          <button class="primary-btn" id="saveProfileBtn">Save Profile</button>
+          <span id="saveProfileMsg" class="save-msg"></span>
+        </div>
+      </section>
+
+      <!-- PROFILES MANAGER -->
+      <section id="tab-profiles" class="panel hidden">
+        <h1>Profiles</h1>
+        <p class="hint">Keep separate profiles for different job categories (e.g. Frontend, Full Stack, EM).</p>
+        <div id="profilesList"></div>
+        <div class="actions">
+          <button class="primary-btn" id="newProfileBtn">+ New Profile</button>
+          <button class="secondary-btn" id="exportProfilesBtn">Export Profiles</button>
+          <label class="secondary-btn file-btn">Import Profiles<input type="file" id="importProfilesInput" accept="application/json" hidden /></label>
+        </div>
+      </section>
+
+      <!-- FIELD MAPPINGS -->
+      <section id="tab-mappings" class="panel hidden">
+        <h1>Field Mappings</h1>
+        <p class="hint">JobFill remembers how it mapped fields on each website. Fix a wrong guess here and it sticks next time.</p>
+        <div id="mappingsList"></div>
+      </section>
+
+      <!-- APPLICATION QUESTIONS -->
+      <section id="tab-questions" class="panel hidden">
+        <h1>Application Questions</h1>
+        <p class="hint">Save answers to common yes/no or short questions that don't fit a standard profile field.</p>
+        <div id="questionsList"></div>
+        <button class="secondary-btn" id="addQuestionBtn">+ Add Question</button>
+      </section>
+
+      <!-- PRIVACY -->
+      <section id="tab-privacy" class="panel hidden">
+        <h1>Privacy</h1>
+        <p class="hint">Your profile and mappings are stored only on this device (chrome.storage.local). Nothing is uploaded. JobFill's content script runs on the pages you visit only so it can detect and fill form fields there — it does not read your browsing history or run on pages where you haven't opened a form.</p>
+
+        <h2>Your JobFill Stats</h2>
+        <div id="statsBox" class="stats-box"></div>
+
+        <h2>Your Data</h2>
+        <div class="actions">
+          <button class="secondary-btn" id="exportAllBtn">Export All Data</button>
+          <label class="secondary-btn file-btn">Import All Data<input type="file" id="importAllInput" accept="application/json" hidden /></label>
+          <button class="danger-btn" id="clearAllBtn">Delete All Data</button>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="tab-settings" class="panel hidden">
+        <h1>Settings</h1>
+
+        <h2>General</h2>
+        <label class="toggle-row"><input type="checkbox" id="s_showWidget" /> Show floating autofill widget</label>
+        <label class="toggle-row"><input type="checkbox" id="s_autoDetectForms" /> Automatically detect forms</label>
+        <label class="toggle-row"><input type="checkbox" id="s_confirmBeforeAutofill" /> Show confirmation before autofill</label>
+
+        <h2>Autofill</h2>
+        <label class="toggle-row"><input type="checkbox" id="s_fillHighConfidence" /> Fill high-confidence fields</label>
+        <label class="toggle-row"><input type="checkbox" id="s_fillMediumConfidence" /> Fill medium-confidence fields (flagged for review)</label>
+        <label class="toggle-row"><input type="checkbox" id="s_askBeforeMedium" /> Ask before filling medium-confidence fields</label>
+        <label class="toggle-row locked"><input type="checkbox" checked disabled /> Never fill sensitive fields (passwords, OTP, card/bank numbers) — always on</label>
+
+        <h2>Appearance</h2>
+        <label>Theme
+          <select id="s_theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+
+        <div class="actions">
+          <button class="primary-btn" id="saveSettingsBtn">Save Settings</button>
+          <span id="saveSettingsMsg" class="save-msg"></span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../content/constants.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1f2430;
+  background: #f6f5fb;
+}
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  background: #201a3b;
+  color: #fff;
+  padding: 20px 14px;
+  flex-shrink: 0;
+}
+.sidebar .brand { font-weight: 700; font-size: 16px; margin-bottom: 18px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; }
+.tab-btn {
+  text-align: left;
+  background: none;
+  border: none;
+  color: #cfc9ea;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+}
+.tab-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.tab-btn.active { background: #5b3cc4; color: #fff; }
+
+.content { flex: 1; padding: 28px 36px; max-width: 860px; }
+.panel.hidden { display: none; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .03em; color: #6b6b7a; margin: 22px 0 10px; }
+.hint { color: #6b6b7a; font-size: 13px; max-width: 640px; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #444; font-weight: 600; }
+label.full { margin-top: 12px; }
+input, textarea, select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid #dcdae6;
+  background: #fff;
+  color: #1f2430;
+  font-weight: 400;
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid #b4a4ee; border-color: #5b3cc4; }
+textarea { resize: vertical; }
+.field-row { margin-bottom: 6px; max-width: 320px; }
+
+.actions { margin-top: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.primary-btn, .secondary-btn, .danger-btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+.primary-btn { background: #5b3cc4; color: #fff; }
+.primary-btn:hover { background: #4c30a8; }
+.secondary-btn { background: #eeecf9; color: #5b3cc4; }
+.secondary-btn:hover { background: #e1ddf5; }
+.danger-btn { background: #fbe7e7; color: #c0392b; }
+.danger-btn:hover { background: #f6d3d3; }
+.file-btn { display: inline-flex; align-items: center; }
+.save-msg { font-size: 12px; color: #3a9b5c; }
+
+.toggle-row { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; color: #1f2430; margin-bottom: 10px; }
+.toggle-row input { width: auto; }
+.toggle-row.locked { color: #8a8a99; }
+
+.stats-box { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-tile { background: #fff; border: 1px solid #e4e4ef; border-radius: 10px; padding: 12px 18px; min-width: 120px; }
+.stat-tile b { display: block; font-size: 20px; color: #5b3cc4; }
+.stat-tile span { font-size: 11px; color: #6b6b7a; }
+
+.card {
+  background: #fff;
+  border: 1px solid #e4e4ef;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.card-row { display: flex; align-items: center; gap: 10px; }
+.card-row .grow { flex: 1; }
+.card-title { font-weight: 700; font-size: 14px; }
+.card-sub { font-size: 12px; color: #6b6b7a; }
+.pill-btn {
+  background: #eeecf9;
+  color: #5b3cc4;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.pill-btn:hover { background: #e1ddf5; }
+.pill-btn.danger { background: #fbe7e7; color: #c0392b; }
+.pill-btn.danger:hover { background: #f6d3d3; }
+.star { cursor: pointer; font-size: 16px; color: #d9d9e6; }
+.star.active { color: #f0b429; }
+
+.mapping-domain { font-weight: 700; margin-top: 16px; margin-bottom: 6px; font-size: 13px; }
+.mapping-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mapping-row .key { flex: 1; font-family: monospace; font-size: 12px; background: #f4f3fb; padding: 4px 8px; border-radius: 6px; }
+.mapping-row select { min-width: 180px; }
+
+.question-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: start; }
+.question-row textarea { min-height: 38px; }
+
+@media (max-width: 720px) {
+  .shell { flex-direction: column; }
+  .sidebar { width: 100%; }
+  .grid { grid-template-columns: 1fr; }
+}

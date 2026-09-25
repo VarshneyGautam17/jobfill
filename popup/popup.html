@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JobFill</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <span class="logo">⚡</span>
+      <span class="brand">JobFill</span>
+    </header>
+
+    <section id="profileCard" class="profile-card">
+      <div class="avatar">👤</div>
+      <div class="profile-info">
+        <div id="profileName" class="profile-name">No profile yet</div>
+        <div id="profileTitle" class="profile-title"></div>
+      </div>
+    </section>
+
+    <div id="profileStatus" class="status"></div>
+
+    <button id="autofillBtn" class="primary-btn" disabled>Autofill Current Page</button>
+    <div id="pageStatus" class="page-status"></div>
+
+    <nav class="nav-list">
+      <button class="nav-item" data-tab="profile"><span>⚙</span> Profile</button>
+      <button class="nav-item" data-tab="profiles"><span>📋</span> Profiles</button>
+      <button class="nav-item" data-tab="mappings"><span>🧠</span> Field Mappings</button>
+      <button class="nav-item" data-tab="questions"><span>❓</span> Application Questions</button>
+      <button class="nav-item" data-tab="privacy"><span>🔒</span> Privacy</button>
+      <button class="nav-item" data-tab="settings"><span>⚙</span> Settings</button>
+    </nav>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
