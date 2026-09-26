@@ -15,8 +15,9 @@ That's it. It's now a real extension running in your browser, exactly like one i
 ## 2. Create your profile
 
 1. Click the JobFill icon → **⚙ Profile** (or it's already open from step 1)
-2. Fill in at least **First Name, Last Name, Email** — everything else is optional but the more you fill in, the more fields JobFill can autofill
-3. Click **Save Profile**
+2. Optional shortcut: under **Import from Resume (PDF)**, pick your resume — JobFill reads it locally (nothing is uploaded anywhere) and pre-fills what it can find. Name/email/phone/links are usually accurate; job title/company/dates/education are best-effort guesses, so **check them before saving**. It never overwrites a field you've already typed something into.
+3. Fill in at least **First Name, Last Name, Email** — everything else is optional but the more you fill in, the more fields JobFill can autofill
+4. Click **Save Profile**
 
 You can create more profiles later (e.g. one for "Frontend roles", one for "Full Stack roles") from **📋 Profiles** → **+ New Profile**, and mark one as default with the ⭐.
 

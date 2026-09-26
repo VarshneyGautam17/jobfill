@@ -21,6 +21,49 @@
     el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
+  // Search/typeahead/date-picker widgets (a text input with a search or
+  // calendar icon, backed by their own async dropdown) often listen for
+  // input/change like any other field, but some ALSO run their own
+  // validator that clears or reverts the value a tick later if the user
+  // didn't explicitly pick a suggestion from their dropdown. We always want
+  // our value to stick regardless of whether that internal search resolved
+  // a match, so re-assert once on the next tick before blurring — cheap,
+  // and a no-op for ordinary inputs where nothing reverted it.
+  function fillTextLike(el, value) {
+    el.focus();
+    setNativeValue(el, value);
+    window.setTimeout(() => {
+      if (document.contains(el) && el.value !== String(value)) {
+        setNativeValue(el, value);
+      }
+      el.blur();
+    }, 60);
+  }
+
+  // Rebuilds a File from the base64 bytes stored in profile.resumes[]
+  // (see options/options.js). A content script can't hand a native
+  // <input type="file"> an arbitrary filesystem path (browsers block that,
+  // for good reason), but it CAN construct a File in memory from bytes it
+  // already has and attach it via DataTransfer — the same mechanism testing
+  // tools use to simulate a drag-and-drop file drop. This only reaches a
+  // REAL <input type="file"> in the DOM; it can't help fully custom upload
+  // widgets that never render one (rare among ATS sites, but it happens).
+  function base64ToFile(base64, fileName, mimeType) {
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    return new File([new Uint8Array(byteNumbers)], fileName || 'resume.pdf', { type: mimeType || 'application/octet-stream' });
+  }
+
+  function fillFileInput(el, resume) {
+    const file = base64ToFile(resume.dataBase64, resume.fileName, resume.mimeType);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    el.files = dt.files;
+    el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  }
+
   function setChecked(el, checked) {
     const proto = Object.getPrototypeOf(el);
     const descriptor = Object.getOwnPropertyDescriptor(proto, 'checked');
@@ -59,11 +102,15 @@
         return true;
       }
 
-      // text, email, tel, textarea, number, etc.
-      const el = record.element;
-      el.focus();
-      setNativeValue(el, value);
-      el.blur();
+      if (record.type === 'file') {
+        if (!value || !value.dataBase64) return false;
+        fillFileInput(record.element, value);
+        return true;
+      }
+
+      // text, email, tel, textarea, number, search/typeahead comboboxes,
+      // custom "Pick a date" fields, etc.
+      fillTextLike(record.element, value);
       return true;
     } catch (err) {
       console.warn('[JobFill] failed to fill field', record, err);

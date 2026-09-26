@@ -20,6 +20,11 @@
     COMPANY: 'COMPANY',
     EXPERIENCE: 'EXPERIENCE',
     SUMMARY: 'SUMMARY',
+    JOB_LOCATION: 'JOB_LOCATION',
+    JOB_DESCRIPTION: 'JOB_DESCRIPTION',
+    JOB_START_DATE: 'JOB_START_DATE',
+    JOB_END_DATE: 'JOB_END_DATE',
+    CURRENTLY_WORKING: 'CURRENTLY_WORKING',
 
     LINKEDIN: 'LINKEDIN',
     GITHUB: 'GITHUB',
@@ -28,6 +33,8 @@
     WEBSITE: 'WEBSITE',
 
     SKILLS: 'SKILLS',
+
+    RESUME: 'RESUME',
 
     DEGREE: 'DEGREE',
     UNIVERSITY: 'UNIVERSITY',
@@ -46,6 +53,9 @@
   };
 
   // Maps a FIELD_TYPE to a dot-path inside the active profile object.
+  // RESUME is deliberately absent — its value isn't a flat string at a dot
+  // path, it's a whole file object picked out of profile.resumes[] (see
+  // JobFillUtils.getActiveResume), so mapper.js special-cases it instead.
   const PROFILE_PATHS = {
     FIRST_NAME: 'personal.firstName',
     MIDDLE_NAME: 'personal.middleName',
@@ -63,6 +73,11 @@
     COMPANY: 'professional.company',
     EXPERIENCE: 'professional.experienceYears',
     SUMMARY: 'professional.summary',
+    JOB_LOCATION: 'professional.location',
+    JOB_DESCRIPTION: 'professional.description',
+    JOB_START_DATE: 'professional.startDate',
+    JOB_END_DATE: 'professional.endDate',
+    CURRENTLY_WORKING: 'professional.currentlyWorking',
     SKILLS: 'professional.skills',
     EXPECTED_SALARY: 'professional.expectedSalary',
     CURRENT_SALARY: 'professional.currentSalary',
@@ -103,7 +118,13 @@
     COMPANY: 'Current Company',
     EXPERIENCE: 'Years of Experience',
     SUMMARY: 'Professional Summary',
+    JOB_LOCATION: 'Job Location',
+    JOB_DESCRIPTION: 'Job Description',
+    JOB_START_DATE: 'Job Start Date',
+    JOB_END_DATE: 'Job End Date',
+    CURRENTLY_WORKING: 'Currently Working Here',
     SKILLS: 'Skills',
+    RESUME: 'Resume / CV Upload',
     LINKEDIN: 'LinkedIn',
     GITHUB: 'GitHub',
     PORTFOLIO: 'Portfolio',
@@ -146,6 +167,20 @@
     EXPERIENCE: { words: ['experience', 'years of experience', 'yoe', 'total experience', 'work experience'] },
     SUMMARY: { words: ['summary', 'about you', 'about yourself', 'professional summary', 'bio', 'cover letter', 'message', 'tell us about'] },
 
+    // Repeatable "Add Experience" entry fields (title/company are already
+    // covered by JOB_TITLE/COMPANY above and reused for these forms too).
+    // "From"/"To" alone are deliberately NOT included as keywords here —
+    // they're too generic (notice-period ranges, availability windows,
+    // price ranges, etc. all use the same words) and would misfire on
+    // unrelated date fields elsewhere on a page. Those fall to the widget's
+    // manual picker instead, which is a one-time fix per site (see mapper.js
+    // learned mappings).
+    JOB_LOCATION: { words: ['office location', 'job location', 'work location', 'location'] },
+    JOB_DESCRIPTION: { words: ['job description', 'role description', 'description', 'responsibilities'] },
+    JOB_START_DATE: { words: ['start date', 'from date', 'joining date', 'date of joining', 'employment start date'] },
+    JOB_END_DATE: { words: ['end date', 'to date', 'date of leaving', 'last working day', 'employment end date'] },
+    CURRENTLY_WORKING: { words: ['currently work here', 'i currently work here', 'currently working here', 'still working here', 'i currently work in this role'] },
+
     LINKEDIN: { words: ['linkedin', 'linked in'] },
     GITHUB: { words: ['github', 'git hub'] },
     PORTFOLIO: { words: ['portfolio', 'portfolio url', 'work samples'] },
@@ -153,6 +188,8 @@
     WEBSITE: { words: ['website', 'personal website', 'personal site', 'homepage'], ac: ['url'] },
 
     SKILLS: { words: ['skills', 'key skills', 'technical skills', 'core competencies', 'technologies'] },
+
+    RESUME: { words: ['resume', 'résumé', 'cv', 'curriculum vitae', 'upload resume', 'attach resume', 'upload cv', 'attach cv', 'upload your resume'] },
 
     DEGREE: { words: ['degree', 'qualification', 'highest degree'] },
     UNIVERSITY: { words: ['university', 'college', 'institute', 'school name', 'alma mater'] },
@@ -197,6 +234,7 @@
   const DEFAULT_SETTINGS = {
     showWidget: true,
     autoDetectForms: true,
+    autoFillOnDetect: false,
     confirmBeforeAutofill: false,
     fillHighConfidence: true,
     fillMediumConfidence: true,

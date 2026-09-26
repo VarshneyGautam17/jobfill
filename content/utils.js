@@ -132,6 +132,17 @@
     return roots;
   }
 
+  // Picks which stored resume (profile.resumes[]) a RESUME-type field should
+  // be filled with: the one explicitly marked default, else the first one.
+  function getActiveResume(profile) {
+    if (!profile || !Array.isArray(profile.resumes) || !profile.resumes.length) return null;
+    if (profile.defaultResumeId) {
+      const marked = profile.resumes.find((r) => r.id === profile.defaultResumeId);
+      if (marked) return marked;
+    }
+    return profile.resumes[0];
+  }
+
   window.JobFillUtils = {
     normalize,
     containsPhrase,
@@ -144,6 +155,7 @@
     fireExtractionEvents,
     cssEscape,
     deepQuerySelectorAll,
-    collectShadowRoots
+    collectShadowRoots,
+    getActiveResume
   };
 })();

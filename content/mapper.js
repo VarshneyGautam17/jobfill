@@ -96,24 +96,36 @@
         return item;
       }
 
-      const path = PROFILE_PATHS[fieldType];
-      const rawValue = path ? getByPath(profile, path) : null;
-
-      if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') {
-        item.status = 'empty';
-        return item;
-      }
-
-      if (record.type === 'select' || record.type === 'radio-group') {
-        const optionMatch = findBestOption(record.options || [], String(rawValue));
-        if (!optionMatch) {
-          item.status = 'unresolved';
+      // RESUME's value is a whole stored file object (see
+      // JobFillUtils.getActiveResume), not a flat profile dot-path string —
+      // handle it before the generic string-value logic below.
+      if (fieldType === 'RESUME') {
+        const resume = window.JobFillUtils.getActiveResume(profile);
+        if (!resume || !resume.dataBase64) {
+          item.status = 'empty';
           return item;
         }
-        item.optionMatch = optionMatch;
-        item.value = String(rawValue);
+        item.value = resume;
       } else {
-        item.value = String(rawValue);
+        const path = PROFILE_PATHS[fieldType];
+        const rawValue = path ? getByPath(profile, path) : null;
+
+        if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') {
+          item.status = 'empty';
+          return item;
+        }
+
+        if (record.type === 'select' || record.type === 'radio-group') {
+          const optionMatch = findBestOption(record.options || [], String(rawValue));
+          if (!optionMatch) {
+            item.status = 'unresolved';
+            return item;
+          }
+          item.optionMatch = optionMatch;
+          item.value = String(rawValue);
+        } else {
+          item.value = String(rawValue);
+        }
       }
 
       const highConfidence = source === 'learned' || confidence >= window.JobFillConstants.CONFIDENCE.HIGH;

@@ -2,6 +2,7 @@
 // mappings, application questions, privacy controls, and settings.
 (function () {
   const { FIELD_TYPES, FIELD_LABELS, DEFAULT_SETTINGS } = window.JobFillConstants;
+  const TRUTHY = new Set(['yes', 'true', 'y', '1']);
 
   let profiles = {};
   let activeProfileId = null;
@@ -24,11 +25,16 @@
       id: uuid(),
       name: name || 'New Profile',
       personal: { firstName: '', middleName: '', lastName: '', fullName: '', email: '', phone: '', country: '', city: '', state: '', address: '', zip: '' },
-      professional: { jobTitle: '', company: '', experienceYears: '', summary: '', skills: '', currentSalary: '', expectedSalary: '', noticePeriod: '', employmentType: '' },
+      professional: {
+        jobTitle: '', company: '', experienceYears: '', summary: '', skills: '',
+        currentSalary: '', expectedSalary: '', noticePeriod: '', employmentType: '',
+        location: '', description: '', startDate: '', endDate: '', currentlyWorking: ''
+      },
       links: { linkedin: '', github: '', portfolio: '', stackoverflow: '', website: '' },
       education: { degree: '', university: '', fieldOfStudy: '', startYear: '', endYear: '', gpa: '' },
       preferences: { workAuthorization: '', relocation: '', remotePreference: '', sponsorship: '' },
-      resumes: []
+      resumes: [],
+      defaultResumeId: null
     };
   }
 
@@ -133,6 +139,9 @@
     setFv('p_employmentType', pr.employmentType); setFv('p_currentSalary', pr.currentSalary);
     setFv('p_expectedSalary', pr.expectedSalary); setFv('p_noticePeriod', pr.noticePeriod);
     setFv('p_skills', pr.skills); setFv('p_summary', pr.summary);
+    setFv('p_jobLocation', pr.location); setFv('p_jobDescription', pr.description);
+    setFv('p_jobStartDate', pr.startDate); setFv('p_jobEndDate', pr.endDate);
+    document.getElementById('p_currentlyWorking').checked = TRUTHY.has(String(pr.currentlyWorking || '').trim().toLowerCase());
 
     setFv('p_linkedin', l.linkedin); setFv('p_github', l.github); setFv('p_portfolio', l.portfolio);
     setFv('p_stackoverflow', l.stackoverflow); setFv('p_website', l.website);
@@ -146,50 +155,199 @@
     renderResumes(profile.resumes || []);
   }
 
+  function formatBytes(n) {
+    if (!n) return '';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  // Stores the raw base64 payload (no "data:...;base64," prefix — mimeType
+  // is kept separately) so filler.js can rebuild a File and attach it to a
+  // real <input type="file"> via DataTransfer when a site asks for a resume.
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result);
+        const commaIdx = result.indexOf(',');
+        resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
   function renderResumes(resumes) {
     const container = document.getElementById('resumeList');
     container.innerHTML = '';
+    const profile = profiles[editingProfileId];
+
     resumes.forEach((resume, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginBottom = '8px';
+
       const row = document.createElement('div');
       row.className = 'card-row';
-      row.style.marginBottom = '8px';
+
+      const isDefault = profile.defaultResumeId ? profile.defaultResumeId === resume.id : idx === 0;
+      const star = document.createElement('span');
+      star.className = 'star' + (isDefault ? ' active' : '');
+      star.textContent = '★';
+      star.title = 'Use this resume when JobFill autofills a "Resume/CV upload" field';
+      star.style.cursor = 'pointer';
+      star.addEventListener('click', () => {
+        profile.defaultResumeId = resume.id;
+        renderResumes(resumes);
+      });
 
       const label = document.createElement('input');
       label.type = 'text';
       label.placeholder = 'Resume label (e.g. MERN Developer Resume)';
       label.value = resume.label || '';
-      label.style.flex = '1';
+      label.className = 'grow';
       label.addEventListener('input', () => (resume.label = label.value));
 
-      const note = document.createElement('input');
-      note.type = 'text';
-      note.placeholder = 'Note / filename / link';
-      note.value = resume.note || '';
-      note.style.flex = '1';
-      note.addEventListener('input', () => (resume.note = note.value));
+      const fileBtn = document.createElement('label');
+      fileBtn.className = 'pill-btn';
+      fileBtn.style.cursor = 'pointer';
+      fileBtn.textContent = resume.fileName ? 'Replace File' : 'Upload File';
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      fileInput.style.display = 'none';
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        resume.dataBase64 = await readFileAsBase64(file);
+        resume.fileName = file.name;
+        resume.mimeType = file.type;
+        resume.sizeBytes = file.size;
+        if (!resume.label) resume.label = file.name.replace(/\.[^.]+$/, '');
+        if (!profile.defaultResumeId) profile.defaultResumeId = resume.id;
+        renderResumes(resumes);
+      });
+      fileBtn.appendChild(fileInput);
 
       const del = document.createElement('button');
       del.className = 'pill-btn danger';
       del.textContent = 'Remove';
       del.addEventListener('click', () => {
         resumes.splice(idx, 1);
+        if (profile.defaultResumeId === resume.id) profile.defaultResumeId = null;
         renderResumes(resumes);
       });
 
+      row.appendChild(star);
       row.appendChild(label);
-      row.appendChild(note);
+      row.appendChild(fileBtn);
       row.appendChild(del);
-      container.appendChild(row);
+      card.appendChild(row);
+
+      const info = document.createElement('div');
+      info.className = 'card-sub';
+      info.style.marginTop = '4px';
+      info.textContent = resume.fileName
+        ? `${resume.fileName} (${formatBytes(resume.sizeBytes)})${isDefault ? ' — used for autofill' : ''}`
+        : 'No file attached yet — upload one so JobFill can attach it to a "Resume/CV" field for you.';
+      card.appendChild(info);
+
+      container.appendChild(card);
     });
-    container.dataset.resumes = '1';
     container.__resumes = resumes;
   }
 
   document.getElementById('addResumeBtn').addEventListener('click', () => {
     const container = document.getElementById('resumeList');
     const resumes = container.__resumes || [];
-    resumes.push({ id: uuid(), label: '', note: '' });
+    resumes.push({ id: uuid(), label: '' });
     renderResumes(resumes);
+  });
+
+  // ---------- resume (PDF) import ----------
+  // Maps the parser's output shape (options/resume-parser.js) to the form
+  // input ids above. Only fields the parser actually found land here, and
+  // only into inputs that are currently blank — an import never clobbers
+  // something the user already typed in.
+  const RESUME_FIELD_MAP = [
+    ['personal.fullName', 'p_fullName'],
+    ['personal.firstName', 'p_firstName'],
+    ['personal.lastName', 'p_lastName'],
+    ['personal.email', 'p_email'],
+    ['personal.phone', 'p_phone'],
+    ['professional.jobTitle', 'p_jobTitle'],
+    ['professional.company', 'p_company'],
+    ['professional.location', 'p_jobLocation'],
+    ['professional.startDate', 'p_jobStartDate'],
+    ['professional.endDate', 'p_jobEndDate'],
+    ['professional.description', 'p_jobDescription'],
+    ['professional.skills', 'p_skills'],
+    ['professional.summary', 'p_summary'],
+    ['links.linkedin', 'p_linkedin'],
+    ['links.github', 'p_github'],
+    ['education.degree', 'p_degree'],
+    ['education.university', 'p_university'],
+    ['education.endYear', 'p_endYear']
+  ];
+
+  function getByDotPath(obj, dotPath) {
+    return dotPath.split('.').reduce((o, k) => (o ? o[k] : undefined), obj);
+  }
+
+  document.getElementById('resumeFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const msg = document.getElementById('resumeImportMsg');
+    msg.style.color = '';
+    msg.textContent = 'Reading PDF…';
+    try {
+      if (!window.JobFillResumeParser) throw new Error('Resume parser is still loading — try again in a second.');
+      const parsed = await window.JobFillResumeParser.parseResumeFile(file);
+
+      let filledCount = 0;
+      RESUME_FIELD_MAP.forEach(([path, id]) => {
+        const value = getByDotPath(parsed, path);
+        if (!value || fv(id)) return;
+        setFv(id, value);
+        filledCount++;
+      });
+      if (parsed.professional && parsed.professional.currentlyWorking === 'Yes') {
+        const cb = document.getElementById('p_currentlyWorking');
+        if (!cb.checked) {
+          cb.checked = true;
+          filledCount++;
+        }
+      }
+
+      // The same PDF also becomes a stored resume attachment, so sites that
+      // ask for a "Resume/CV upload" get this file auto-attached later too
+      // (filler.js -> RESUME field type) — one upload covers both.
+      const resumeContainer = document.getElementById('resumeList');
+      const resumes = resumeContainer.__resumes || [];
+      let resumeEntry = resumes.find((r) => r.fileName === file.name);
+      if (!resumeEntry) {
+        resumeEntry = { id: uuid(), label: file.name.replace(/\.[^.]+$/, '') };
+        resumes.push(resumeEntry);
+      }
+      resumeEntry.dataBase64 = await readFileAsBase64(file);
+      resumeEntry.fileName = file.name;
+      resumeEntry.mimeType = file.type;
+      resumeEntry.sizeBytes = file.size;
+      const editingProfile = profiles[editingProfileId];
+      if (!editingProfile.defaultResumeId) editingProfile.defaultResumeId = resumeEntry.id;
+      renderResumes(resumes);
+
+      msg.textContent = filledCount
+        ? `Filled ${filledCount} field(s) and attached this file as your resume for upload fields — review below, then click Save Profile.`
+        : 'Attached this file as your resume for upload fields, but could not confidently pull any profile fields from it — fill those in manually.';
+    } catch (err) {
+      console.error('[JobFill] resume import failed', err);
+      msg.style.color = '#c0392b';
+      msg.textContent = `Couldn't read that PDF (${err.message || err}). Try a different export, or fill in manually.`;
+    } finally {
+      e.target.value = '';
+    }
   });
 
   document.getElementById('saveProfileBtn').addEventListener('click', () => {
@@ -205,7 +363,10 @@
       jobTitle: fv('p_jobTitle'), company: fv('p_company'), experienceYears: fv('p_experienceYears'),
       employmentType: fv('p_employmentType'), currentSalary: fv('p_currentSalary'),
       expectedSalary: fv('p_expectedSalary'), noticePeriod: fv('p_noticePeriod'),
-      skills: fv('p_skills'), summary: fv('p_summary')
+      skills: fv('p_skills'), summary: fv('p_summary'),
+      location: fv('p_jobLocation'), description: fv('p_jobDescription'),
+      startDate: fv('p_jobStartDate'), endDate: fv('p_jobEndDate'),
+      currentlyWorking: document.getElementById('p_currentlyWorking').checked ? 'Yes' : 'No'
     };
     profile.links = {
       linkedin: fv('p_linkedin'), github: fv('p_github'), portfolio: fv('p_portfolio'),
@@ -500,6 +661,7 @@
   function renderSettings() {
     document.getElementById('s_showWidget').checked = !!settings.showWidget;
     document.getElementById('s_autoDetectForms').checked = !!settings.autoDetectForms;
+    document.getElementById('s_autoFillOnDetect').checked = !!settings.autoFillOnDetect;
     document.getElementById('s_confirmBeforeAutofill').checked = !!settings.confirmBeforeAutofill;
     document.getElementById('s_fillHighConfidence').checked = !!settings.fillHighConfidence;
     document.getElementById('s_fillMediumConfidence').checked = !!settings.fillMediumConfidence;
@@ -511,6 +673,7 @@
     settings = {
       showWidget: document.getElementById('s_showWidget').checked,
       autoDetectForms: document.getElementById('s_autoDetectForms').checked,
+      autoFillOnDetect: document.getElementById('s_autoFillOnDetect').checked,
       confirmBeforeAutofill: document.getElementById('s_confirmBeforeAutofill').checked,
       fillHighConfidence: document.getElementById('s_fillHighConfidence').checked,
       fillMediumConfidence: document.getElementById('s_fillMediumConfidence').checked,
