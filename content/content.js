@@ -69,25 +69,29 @@
     });
   }
 
-  function runAutofill() {
-    if (!profile) return;
-    const toFill = plan.filter((p) => p.status === 'fill' || p.status === 'fill-review');
-    if (settings.confirmBeforeAutofill && toFill.length) {
+  // Fills every fill/fill-review item in `items` and reports the outcome.
+  // Shared by the manual Autofill button/message (full plan, confirm-gated)
+  // and auto-fill-on-detect (just the newly-discovered delta, never
+  // confirm-gated — the entire point of that mode is "no click needed").
+  function fillAndReport(items, opts) {
+    opts = opts || {};
+    const toFill = items.filter((p) => p.status === 'fill' || p.status === 'fill-review');
+    if (!opts.skipConfirm && settings.confirmBeforeAutofill && toFill.length) {
       const ok = confirm(`JobFill will fill ${toFill.length} field(s) on this page. Continue?`);
       if (!ok) return;
     }
     let filled = 0;
     let failed = 0;
-    const items = [];
+    const resultItems = [];
 
     toFill.forEach((item) => {
       const ok = window.JobFillFiller.fillItem(item);
       if (ok) {
         filled++;
-        items.push({ mark: item.status === 'fill-review' ? '⚠' : '✓', label: item.label || item.fieldKey });
+        resultItems.push({ mark: item.status === 'fill-review' ? '⚠' : '✓', label: item.label || item.fieldKey });
       } else {
         failed++;
-        items.push({ mark: '✕', label: item.label || item.fieldKey });
+        resultItems.push({ mark: '✕', label: item.label || item.fieldKey });
       }
     });
 
@@ -95,19 +99,39 @@
     const review = plan.filter((p) => p.status === 'unresolved' || p.status === 'review').length;
 
     plan.filter((p) => p.status === 'unresolved' || p.status === 'empty' || p.status === 'review').forEach((item) => {
-      items.push({ mark: statusMark(item.status), label: item.label || fieldHint(item.record) });
+      resultItems.push({ mark: statusMark(item.status), label: item.label || fieldHint(item.record) });
     });
 
     bumpStats({
-      formsDetected: 1,
+      formsDetected: opts.countAsNewForm ? 1 : 0,
       fieldsFilled: filled,
       fieldsFailed: failed,
       applicationsAssisted: filled > 0 ? 1 : 0
     });
 
     if (widget) {
-      widget.showResult({ detected: plan.length, filled, skipped, review, items });
+      widget.showResult({ detected: plan.length, filled, skipped, review, items: resultItems });
     }
+  }
+
+  // Manual trigger — widget button, popup button, or JOBFILL_AUTOFILL message.
+  function runAutofill() {
+    if (!profile) return;
+    fillAndReport(plan, { countAsNewForm: true });
+  }
+
+  // Automatic trigger — only ever fills the newly-discovered delta from this
+  // scan/observer batch, never the whole accumulated plan, so re-detecting
+  // a growing SPA page doesn't stomp on fields the user already edited by
+  // hand after an earlier auto-fill pass. Returns true if it actually filled
+  // something (and therefore already rendered a result into the widget), so
+  // callers know not to immediately overwrite that with a plain summary.
+  function autoFillDelta(newPlanItems) {
+    if (!profile || !settings.autoFillOnDetect || !newPlanItems.length) return false;
+    const hasFillable = newPlanItems.some((p) => p.status === 'fill' || p.status === 'fill-review');
+    if (!hasFillable) return false;
+    fillAndReport(newPlanItems, { skipConfirm: true, countAsNewForm: false });
+    return true;
   }
 
   function statusMark(status) {
@@ -141,14 +165,13 @@
 
   function scanAndRender() {
     const records = window.JobFillDetector.scan(document);
-    if (records.length) {
-      const newPlan = rebuildPlan(records);
-      plan = plan.concat(newPlan);
-    }
+    const newPlan = records.length ? rebuildPlan(records) : [];
+    if (newPlan.length) plan = plan.concat(newPlan);
     stopIfDetectorTripped();
-    if (stopped || !settings.autoDetectForms) return;
-    ensureWidget();
-    if (widget) widget.updatePlan(plan);
+    if (stopped) return;
+    if (settings.autoDetectForms) ensureWidget();
+    const autoFilled = autoFillDelta(newPlan);
+    if (settings.autoDetectForms && widget && !autoFilled) widget.updatePlan(plan);
   }
 
   function init() {
@@ -161,9 +184,10 @@
         const newPlan = rebuildPlan(newRecords);
         plan = plan.concat(newPlan);
         stopIfDetectorTripped();
-        if (stopped || !settings.autoDetectForms) return;
-        ensureWidget();
-        if (widget) widget.updatePlan(plan);
+        if (stopped) return;
+        if (settings.autoDetectForms) ensureWidget();
+        const autoFilled = autoFillDelta(newPlan);
+        if (settings.autoDetectForms && widget && !autoFilled) widget.updatePlan(plan);
       });
     });
   }

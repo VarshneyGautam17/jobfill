@@ -23,6 +23,21 @@
       <!-- PROFILE EDITOR -->
       <section id="tab-profile" class="panel">
         <h1>Profile Editor</h1>
+
+        <div class="card" id="resumeImportCard">
+          <h2 style="margin-top:0">Import from Resume (PDF)</h2>
+          <p class="hint">
+            Reads your PDF locally in this browser tab (nothing is uploaded anywhere), fills in what it can find below —
+            name/email/phone/links are usually reliable, job title/company/dates/education are best-effort guesses — and
+            stores the file itself under Resumes so JobFill can attach it to a site's "Resume/CV upload" field for you later.
+            Review everything before clicking <b>Save Profile</b>; existing fields you've already filled in are left alone.
+          </p>
+          <div class="card-row">
+            <input type="file" id="resumeFileInput" accept="application/pdf" />
+            <span id="resumeImportMsg" class="save-msg"></span>
+          </div>
+        </div>
+
         <div class="field-row">
           <label>Profile Nickname
             <input type="text" id="p_name" placeholder="e.g. MERN Developer" />
@@ -57,6 +72,16 @@
         <label class="full">Skills (comma separated)<textarea id="p_skills" rows="2"></textarea></label>
         <label class="full">Professional Summary<textarea id="p_summary" rows="3"></textarea></label>
 
+        <h2>Current / Most Recent Role Details</h2>
+        <p class="hint">Feeds "Add Experience" style forms (title/company/location/description/dates) that many ATS sites use — Workday, Greenhouse, SmartRecruiters, Lever, etc.</p>
+        <div class="grid">
+          <label>Office / Job Location<input type="text" id="p_jobLocation" placeholder="e.g. Bengaluru, India" /></label>
+          <label>Start Date<input type="text" id="p_jobStartDate" placeholder="e.g. 01/2023 or Jan 2023" /></label>
+          <label>End Date<input type="text" id="p_jobEndDate" placeholder="Leave blank if current" /></label>
+        </div>
+        <label class="toggle-row"><input type="checkbox" id="p_currentlyWorking" /> I currently work here</label>
+        <label class="full">Role Description<textarea id="p_jobDescription" rows="3" placeholder="What you did in this role — reused for 'Description' fields on Experience forms"></textarea></label>
+
         <h2>Links</h2>
         <div class="grid">
           <label>LinkedIn<input type="url" id="p_linkedin" /></label>
@@ -85,7 +110,12 @@
         </div>
 
         <h2>Resumes</h2>
-        <p class="hint">JobFill stores resume references only — browsers don't allow extensions to auto-attach files to a file input for security reasons, so you'll still attach the file yourself.</p>
+        <p class="hint">
+          Upload the actual file for each resume — JobFill stores it locally and can attach it to a site's "Resume/CV upload" field
+          automatically. Star the one to use by default. This works for real file inputs, which is how virtually every ATS (Greenhouse,
+          Lever, Workday, SmartRecruiters, etc.) implements resume upload even when it's styled as a drag-and-drop box; a handful of
+          fully custom upload widgets that never render a real file input can't be reached this way, and you'll still attach those yourself.
+        </p>
         <div id="resumeList"></div>
         <button class="secondary-btn" id="addResumeBtn">+ Add Resume Reference</button>
 
@@ -145,7 +175,9 @@
         <h2>General</h2>
         <label class="toggle-row"><input type="checkbox" id="s_showWidget" /> Show floating autofill widget</label>
         <label class="toggle-row"><input type="checkbox" id="s_autoDetectForms" /> Automatically detect forms</label>
+        <label class="toggle-row"><input type="checkbox" id="s_autoFillOnDetect" /> Automatically fill fields as soon as they're detected (no click needed)</label>
         <label class="toggle-row"><input type="checkbox" id="s_confirmBeforeAutofill" /> Show confirmation before autofill</label>
+        <p class="hint">The Autofill button (widget or popup) always works regardless of this toggle — turning it on just adds automatic filling on top, it doesn't replace the manual option.</p>
 
         <h2>Autofill</h2>
         <label class="toggle-row"><input type="checkbox" id="s_fillHighConfidence" /> Fill high-confidence fields</label>
@@ -171,6 +203,7 @@
   </div>
 
   <script src="../content/constants.js"></script>
+  <script type="module" src="resume-parser.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

@@ -2,7 +2,12 @@
 // used later by confidence.js / mapper.js. Designed to be re-run safely
 // on newly-added subtrees (see observer.js) without reprocessing elements.
 (function () {
-  const SKIP_TYPES = new Set(['hidden', 'submit', 'button', 'reset', 'image', 'file']);
+  // 'file' used to be skipped entirely (JobFill couldn't attach anything to
+  // it), but filler.js can now attach a stored resume via the DataTransfer
+  // API, so file inputs are real candidates now — gated the same way as
+  // everything else by hasIdentifyingSignal (an unlabeled file input still
+  // won't surface).
+  const SKIP_TYPES = new Set(['hidden', 'submit', 'button', 'reset', 'image']);
 
   // Piercing every shadow root on a component-heavy page also surfaces
   // internal implementation-detail inputs (a dropdown's hidden filter box,

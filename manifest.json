@@ -23,7 +23,7 @@
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "unlimitedStorage"],
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
