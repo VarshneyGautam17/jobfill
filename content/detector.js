@@ -1,8 +1,8 @@
-// JobFill — scans the DOM for fillable form fields and extracts metadata
+// AutoFill Assistant — scans the DOM for fillable form fields and extracts metadata
 // used later by confidence.js / mapper.js. Designed to be re-run safely
 // on newly-added subtrees (see observer.js) without reprocessing elements.
 (function () {
-  // 'file' used to be skipped entirely (JobFill couldn't attach anything to
+  // 'file' used to be skipped entirely (nothing could attach anything to
   // it), but filler.js can now attach a stored resume via the DataTransfer
   // API, so file inputs are real candidates now — gated the same way as
   // everything else by hasIdentifyingSignal (an unlabeled file input still
@@ -162,7 +162,7 @@
     if (totalReturned >= MAX_FIELDS) {
       stopped = true;
       console.warn(
-        `[JobFill] This page has an unusually large number of real form fields (50+) — stopping detection here for safety. ` +
+        `[AutoFill Assistant] This page has an unusually large number of real form fields (50+) — stopping detection here for safety. ` +
           `Use the extension popup if you still want to try filling what was found.`
       );
     }

@@ -1,4 +1,4 @@
-// JobFill — best-effort resume (PDF) -> profile field extraction.
+// AutoFill Assistant — best-effort resume (PDF) -> profile field extraction.
 //
 // Everything here runs locally in the options page using a vendored copy of
 // PDF.js (options/vendor/pdfjs/, Apache-2.0) — the PDF's bytes never leave

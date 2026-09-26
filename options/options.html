@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>JobFill Settings</title>
+  <title>AutoFill Assistant Settings</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
   <div class="shell">
     <aside class="sidebar">
-      <div class="brand">⚡ JobFill</div>
+      <div class="brand">⚡ AutoFill Assistant</div>
       <nav>
         <button class="tab-btn" data-tab="profile">Profile</button>
         <button class="tab-btn" data-tab="profiles">Profiles</button>
@@ -29,7 +29,7 @@
           <p class="hint">
             Reads your PDF locally in this browser tab (nothing is uploaded anywhere), fills in what it can find below —
             name/email/phone/links are usually reliable, job title/company/dates/education are best-effort guesses — and
-            stores the file itself under Resumes so JobFill can attach it to a site's "Resume/CV upload" field for you later.
+            stores the file itself under Resumes so AutoFill Assistant can attach it to a site's "Resume/CV upload" field for you later.
             Review everything before clicking <b>Save Profile</b>; existing fields you've already filled in are left alone.
           </p>
           <div class="card-row">
@@ -111,7 +111,7 @@
 
         <h2>Resumes</h2>
         <p class="hint">
-          Upload the actual file for each resume — JobFill stores it locally and can attach it to a site's "Resume/CV upload" field
+          Upload the actual file for each resume — AutoFill Assistant stores it locally and can attach it to a site's "Resume/CV upload" field
           automatically. Star the one to use by default. This works for real file inputs, which is how virtually every ATS (Greenhouse,
           Lever, Workday, SmartRecruiters, etc.) implements resume upload even when it's styled as a drag-and-drop box; a handful of
           fully custom upload widgets that never render a real file input can't be reached this way, and you'll still attach those yourself.
@@ -140,7 +140,7 @@
       <!-- FIELD MAPPINGS -->
       <section id="tab-mappings" class="panel hidden">
         <h1>Field Mappings</h1>
-        <p class="hint">JobFill remembers how it mapped fields on each website. Fix a wrong guess here and it sticks next time.</p>
+        <p class="hint">AutoFill Assistant remembers how it mapped fields on each website. Fix a wrong guess here and it sticks next time.</p>
         <div id="mappingsList"></div>
       </section>
 
@@ -155,9 +155,9 @@
       <!-- PRIVACY -->
       <section id="tab-privacy" class="panel hidden">
         <h1>Privacy</h1>
-        <p class="hint">Your profile and mappings are stored only on this device (chrome.storage.local). Nothing is uploaded. JobFill's content script runs on the pages you visit only so it can detect and fill form fields there — it does not read your browsing history or run on pages where you haven't opened a form.</p>
+        <p class="hint">Your profile and mappings are stored only on this device (chrome.storage.local). Nothing is uploaded. AutoFill Assistant runs on a page only after you click "Detect Fields on This Page" in the popup — it never scans or reads anything automatically, and it does not read your browsing history.</p>
 
-        <h2>Your JobFill Stats</h2>
+        <h2>Your AutoFill Assistant Stats</h2>
         <div id="statsBox" class="stats-box"></div>
 
         <h2>Your Data</h2>

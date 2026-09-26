@@ -1,4 +1,4 @@
-// JobFill — shared constants for the content-script pipeline.
+// AutoFill Assistant — shared constants for the content-script pipeline.
 // Loaded as a plain script (no bundler); exposes window.JobFillConstants.
 (function () {
   const FIELD_TYPES = {
@@ -207,7 +207,7 @@
     EMPLOYMENT_TYPE: { words: ['employment type', 'job type', 'contract type', 'full time or part time'] }
   };
 
-  // Fields JobFill must never auto-fill, regardless of confidence.
+  // Fields AutoFill Assistant must never auto-fill, regardless of confidence.
   const SENSITIVE_PATTERNS = [
     'password', 'pwd', 'passcode', 'pass code',
     'otp', 'one time password', 'onetimepassword', 'one time pin',
@@ -227,7 +227,7 @@
   // certainly not a real job application form but something pathological
   // (a component library exposing internal implementation-detail inputs
   // through Shadow DOM, a page that mutates constantly, etc.) — past this
-  // point JobFill stops scanning/observing that page entirely rather than
+  // point AutoFill Assistant stops scanning/observing that page entirely rather than
   // risk degrading it further.
   const MAX_DETECTED_FIELDS = 50;
 

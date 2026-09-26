@@ -1,36 +1,41 @@
-# JobFill — Architecture & Flow
+# AutoFill Assistant — Architecture & Flow
 
-JobFill is a Manifest V3 Chrome extension that detects form fields on a job
-application page, matches them against a user-authored profile, and fills
-them in with review controls for anything it isn't confident about. There is
-no build step and no bundler — every file listed in `manifest.json` is
-loaded by Chrome as-is.
+AutoFill Assistant is a Manifest V3 Chrome extension that detects form fields
+on a page, matches them against a user-authored profile, and fills them in
+with review controls for anything it isn't confident about. There is no
+build step and no bundler — every file is loaded by Chrome as-is, either
+declared in `manifest.json` or injected on demand (see below). It is
+click-to-activate: there is no `content_scripts` entry and no broad host
+permission, so nothing runs anywhere until the user explicitly triggers it
+on a specific tab.
 
 ## Top-level pieces
 
 | Piece | Runs where | Role |
 |---|---|---|
 | `background/service-worker.js` | Extension background (MV3 service worker) | One-time storage init on install, opens options page for first-time users |
-| `content/*.js` | Injected into every `http(s)://` page | Detection → confidence scoring → mapping → filling → floating widget |
-| `popup/*` | Toolbar popup | At-a-glance profile/page status, one-click Autofill, links into Options |
+| `content/*.js` | Injected into the active tab **on demand**, only when the popup triggers it | Detection → confidence scoring → mapping → filling → floating widget |
+| `popup/*` | Toolbar popup | Profile/page status, triggers on-demand injection ("Detect Fields on This Page"), one-click Autofill once active, links into Options |
 | `options/*` | Full extension page (`chrome-extension://…/options.html`) | Profile editor, profile manager, learned mappings, saved Q&A, privacy/export, settings |
 
 All persistent state lives in `chrome.storage.local` (see [Storage schema](#storage-schema)). There is no remote backend — everything is local to the browser profile.
 
-## Load order (content scripts)
+## Load order (content scripts) — injected on demand, not declared in the manifest
 
-`manifest.json` injects these into every page, in this exact order, at `document_idle`:
+`popup/popup.js`'s `CONTENT_SCRIPT_FILES` array is injected into the current tab via `chrome.scripting.executeScript` when the user clicks **Detect Fields on This Page**, in this exact order:
 
 ```
 constants.js → utils.js → detector.js → confidence.js → mapper.js → filler.js → widget.js → observer.js → content.js
 ```
 
-Each file is an IIFE that hangs a namespace object off `window` (e.g. `window.JobFillDetector`), so later scripts in the list can call earlier ones directly — no imports/exports, no module system. `content.js` is the entry point and the only one that runs top-level logic on load; the rest just register their namespace and wait to be called.
+This only requires the `activeTab` + `scripting` permissions (both scoped to the tab the user just acted on from the extension UI) — there's no manifest `content_scripts` block and no `http://*/*`/`https://*/*` host permission, which is what makes this "click-to-activate" rather than "runs everywhere automatically." `scripts/validate-manifest.js` parses this same array out of `popup.js` to keep CI checking these files exist, since manifest validation alone no longer covers them.
+
+Each file is an IIFE that hangs a namespace object off `window` (e.g. `window.JobFillDetector`), so later scripts in the list can call earlier ones directly — no imports/exports, no module system. `content.js` is the entry point and the only one that runs top-level logic on injection; the rest just register their namespace and wait to be called. `content.js` guards against a second injection into an already-active tab (`window.__jobfillActive`) so clicking the popup's button twice can't double-mount the widget or double-register the message listener.
 
 ## End-to-end flow
 
-1. **Page loads.** `content.js` waits for `DOMContentLoaded` (or runs immediately if the document is already ready), then calls `init()`.
-2. **Load profile + settings.** `init()` reads `profiles`, `activeProfileId`, `settings`, and this hostname's slice of `siteMappings` from `chrome.storage.local`. If there is no active profile yet, JobFill stays completely silent on the page (no widget, no scanning) — a deliberate first-run rule.
+1. **User clicks "Detect Fields on This Page" in the popup.** `popup.js` calls `chrome.scripting.executeScript` to inject the files above into the current tab; by definition the page is already fully loaded by this point, so `content.js`'s top-level code runs immediately and calls `init()`.
+2. **Load profile + settings.** `init()` reads `profiles`, `activeProfileId`, `settings`, and this hostname's slice of `siteMappings` from `chrome.storage.local`. If there is no active profile yet, AutoFill Assistant stays completely silent on the page (no widget, no scanning) — a deliberate first-run rule.
 3. **First scan.** `JobFillDetector.scan(document)` walks the DOM (including open Shadow DOM subtrees) for fillable `input`/`select`/`textarea` elements, filters out anything without a real identifying signal, and returns field *records*.
 4. **Build a fill plan.** `JobFillMapper.plan(records, ctx)` turns each record into a plan item: classify it via `JobFillConfidence.classify()` (or use a previously *learned* mapping for this site if one exists), look up the matching value in the active profile, and decide a `status` (`fill`, `fill-review`, `review`, `unresolved`, `empty`, `sensitive`).
 5. **Show the widget.** If `settings.showWidget` and `settings.autoDetectForms` are on, `JobFillWidget.mount()` renders a draggable floating panel (inside its own closed-off Shadow DOM so page CSS can't touch it) summarizing detected/ready/needs-review counts, with an **Autofill** button and inline pickers for anything unresolved.
@@ -46,7 +51,7 @@ Each file is an IIFE that hangs a namespace object off `window` (e.g. `window.Jo
 
 ### `content/constants.js` — shared vocabulary
 Defines everything the rest of the pipeline agrees on, as a single frozen-in-spirit namespace (`window.JobFillConstants`):
-- `FIELD_TYPES` — the closed set of field categories JobFill understands (`FIRST_NAME`, `EMAIL`, `WORK_AUTHORIZATION`, …).
+- `FIELD_TYPES` — the closed set of field categories AutoFill Assistant understands (`FIRST_NAME`, `EMAIL`, `WORK_AUTHORIZATION`, …).
 - `PROFILE_PATHS` — maps each `FIELD_TYPE` to a dot-path into the profile object (e.g. `EMAIL → "personal.email"`).
 - `FIELD_LABELS` — human-readable labels for the same types, used in the widget's picker and the options page's mapping editor.
 - `FIELD_SIGNALS` — per-type weighted keyword lists (`words`), matching `autocomplete` tokens (`ac`), and matching native `type` attributes (`type`); this is the entire keyword corpus `confidence.js` scores against.
@@ -91,7 +96,7 @@ Bridges detected fields to actual profile values and decides what to do with eac
 ### `content/filler.js` — DOM writer
 The only file that actually mutates form elements:
 - `setNativeValue(el, value)` calls the native HTMLInputElement/HTMLTextAreaElement property setter directly (bypassing any React/Vue/Angular-patched `.value` setter) so framework-controlled inputs actually register the change, then dispatches `input`+`change` with `composed: true` so the event can cross out of a Shadow DOM boundary into a listener sitting in the light DOM.
-- `fillTextLike(el, value)` wraps `setNativeValue` for every text-like field (including search/typeahead comboboxes and custom "Pick a date" widgets): it sets the value, then re-asserts it once on the next tick before blurring, in case the site's own component asynchronously clears/reverts a typed value it couldn't resolve to one of its own dropdown suggestions. This is what makes JobFill "just paste the value" regardless of whether the field's own search found a match.
+- `fillTextLike(el, value)` wraps `setNativeValue` for every text-like field (including search/typeahead comboboxes and custom "Pick a date" widgets): it sets the value, then re-asserts it once on the next tick before blurring, in case the site's own component asynchronously clears/reverts a typed value it couldn't resolve to one of its own dropdown suggestions. This is what makes AutoFill Assistant "just paste the value" regardless of whether the field's own search found a match.
 - `fillFileInput(el, resume)` handles `record.type === 'file'` (a RESUME field): rebuilds a `File` from the base64 bytes in `profile.resumes[]` (`base64ToFile`) and attaches it via `DataTransfer` — `el.files = dt.files` — the same in-memory-File-drop mechanism testing tools use, since a content script can't (and shouldn't be able to) hand a native file input an arbitrary filesystem path. This only reaches a *real* `<input type="file">`, even one hidden/styled by the site's own UI; it can't help a handful of fully custom upload widgets that never render one.
 - `setChecked(el, checked)` does the same for checkboxes/radios via the native `checked` setter, plus a synthetic `click` (some frameworks listen for `click`, not `change`, on radios/checkboxes).
 - `fillItem(item)` dispatches to the right strategy based on `record.type` (`select`, `radio-group`, `checkbox`, or plain text-like), wrapped in try/catch so one broken field can't abort the whole autofill run.
@@ -131,20 +136,21 @@ The entire background script is a single `chrome.runtime.onInstalled` listener:
 - Seeds `chrome.storage.local` with empty/default values for `profiles`, `settings`, `siteMappings`, `applicationQuestions`, and `stats` — but only for keys that don't already exist, so this is safe to run again on every extension update without clobbering user data.
 - On a fresh **install** (not an update), opens the options page automatically so a first-time user isn't left staring at an empty popup.
 
-### `popup/popup.js` — toolbar popup
-Small, read-mostly controller for `popup/popup.html`:
+### `popup/popup.js` — toolbar popup, and the activation trigger
+Small controller for `popup/popup.html`, and the *only* place that ever injects `content/*.js` anywhere:
 - Loads the active profile and renders name/title/status ("✓ Profile Ready" or a warning to set one up).
-- Queries the active tab and, if it's an `http(s)://` page, messages the content script (`JOBFILL_GET_STATUS`) to show a live "`N` fields detected · `M` ready to fill" line, or a stopped/no-content-script/unsupported-page message as appropriate. The Autofill button is disabled unless there's at least one field ready.
-- Autofill button sends `JOBFILL_AUTOFILL` to the active tab's content script, then closes the popup.
+- Queries the active tab; if it's not an `http(s)://` page, shows "AutoFill Assistant cannot access this page" and disables the button.
+- Otherwise pings the tab (`JOBFILL_PING`) to find out whether it's already active there. Not yet active → button reads **"Detect Fields on This Page"**; clicking it calls `chrome.scripting.executeScript` with `CONTENT_SCRIPT_FILES` (the same file list and order the old `manifest.json` `content_scripts` block used to declare), then immediately re-checks status. Already active → button reads **"Autofill Current Page"**, showing a live "`N` fields detected · `M` ready to fill" line via `JOBFILL_GET_STATUS`.
+- In "Autofill Current Page" mode, clicking sends `JOBFILL_AUTOFILL` to the tab's now-injected content script, then closes the popup.
 - Nav buttons open (or focus, if already open) `options.html#<tab>` for each options-page section, rather than duplicating that UI inside the popup.
 
 ### `options/options.js` — full settings/profile UI
 The largest UI surface, organized into six tab panels (`profile`, `profiles`, `mappings`, `questions`, `privacy`, `settings`), switched by `location.hash` and rendered on demand (`activateTab`):
-- **Profile editor** (`profile` tab) — a flat form bound to one profile object's `personal`/`professional`/`links`/`education`/`preferences` sections, plus a free-form list of resume labels/notes (`resumes[]`, metadata only — no file upload/storage). Auto-creates a blank profile if none exists yet. Save writes the whole edited profile back to `profiles[editingProfileId]`.
+- **Profile editor** (`profile` tab) — a flat form bound to one profile object's `personal`/`professional`/`links`/`education`/`preferences` sections, plus a PDF resume import (see `resume-parser.js` above) and a resume file manager (`resumes[]` — actual stored files, not just labels; see [Resume file storage](#resume-file-storage-profileresumes--resume-field-type) above). Auto-creates a blank profile if none exists yet. Save writes the whole edited profile back to `profiles[editingProfileId]`.
 - **Profiles manager** (`profiles` tab) — list/star-as-default/edit/duplicate/delete across multiple saved profiles (e.g. "Frontend Developer" vs "Backend Developer" personas), plus JSON export/import of just the `profiles`+`activeProfileId` slice.
 - **Field mappings** (`mappings` tab) — a per-site, per-field-key editor over the same `siteMappings` object `content.js` reads/writes; lets a user manually fix or delete a learned mapping, or wipe all learned mappings for one domain.
-- **Application questions** (`questions` tab) — a free-form list of saved Q&A pairs (`applicationQuestions`) for questions JobFill doesn't structurally understand (e.g. "Are you authorized to work in India?") — captured here for the user's own reference/reuse; not read by the autofill pipeline itself.
-- **Privacy** (`privacy` tab) — read-only lifetime stats display (applications assisted, forms detected, fields filled, success rate), plus full-data JSON export/import (`chrome.storage.local.get(null)`/`.set(data)`) and a "Clear ALL JobFill data" nuke button (double-confirmed).
+- **Application questions** (`questions` tab) — a free-form list of saved Q&A pairs (`applicationQuestions`) for questions AutoFill Assistant doesn't structurally understand (e.g. "Are you authorized to work in India?") — captured here for the user's own reference/reuse; not read by the autofill pipeline itself.
+- **Privacy** (`privacy` tab) — read-only lifetime stats display (applications assisted, forms detected, fields filled, success rate), plus full-data JSON export/import (`chrome.storage.local.get(null)`/`.set(data)`) and a "Delete All Data" nuke button (double-confirmed).
 - **Settings** (`settings` tab) — toggles backing `DEFAULT_SETTINGS` (show widget, auto-detect forms, auto-fill on detect, confirm before autofill, fill high/medium confidence, ask before medium, theme). Saving calls `broadcastSettingsChanged()`, which messages every open tab's content script (`JOBFILL_SETTINGS_CHANGED`) so changes apply live without reloading pages.
 
 ### `options/resume-parser.js` — PDF resume import
@@ -152,16 +158,16 @@ An ES module (loaded via `<script type="module">`, the one exception to "every f
 - `extractTextAndLayout()` reconstructs lines from PDF.js's positioned text fragments (`hasEOL` plus a y-coordinate jump as fallback) — multi-column resumes will interleave column text, a known limitation of reading-order extraction.
 - Regex/keyword heuristics (mirroring `confidence.js`'s style, not a model) pull out email/phone/LinkedIn/GitHub (reliable), and a best-effort name (largest-font text near the top of page 1), current job title/company/location/dates/description (first "Experience" section entry), skills, summary, and degree/university/grad year.
 - Exposes `window.JobFillResumeParser.parseResumeFile(file)`, returning a partial profile-shaped object with only the fields it actually found.
-- `options.js`'s file-input handler merges that into the profile form, filling only currently-blank inputs (never clobbers something already typed) and reports a count — the user still has to review and click **Save Profile** themselves, same review-before-trust posture as every guessed field elsewhere in this extension. It also stores the same PDF's bytes as a resume attachment (see Resumes below) in the same step, so one upload both pre-fills the profile and becomes the file JobFill attaches to a site's upload field later.
+- `options.js`'s file-input handler merges that into the profile form, filling only currently-blank inputs (never clobbers something already typed) and reports a count — the user still has to review and click **Save Profile** themselves, same review-before-trust posture as every guessed field elsewhere in this extension. It also stores the same PDF's bytes as a resume attachment (see Resumes below) in the same step, so one upload both pre-fills the profile and becomes the file AutoFill Assistant attaches to a site's upload field later.
 
 ### Resume file storage (`profile.resumes[]` / `RESUME` field type)
-`profile.resumes` entries now carry the actual file, not just a label: `{ id, label, fileName, mimeType, sizeBytes, dataBase64 }`, edited from the Profile tab's Resumes section (`options.js` `renderResumes`/`readFileAsBase64`) or populated automatically by the PDF import above. `profile.defaultResumeId` marks which one JobFill uses (starred in the UI; falls back to `resumes[0]`). On a job site, a labeled "Resume/CV upload" field classifies as the `RESUME` field type (`constants.js` `FIELD_SIGNALS.RESUME`) and gets filled by `filler.js`'s `fillFileInput` (see above). Storing files pushes `chrome.storage.local` past its default 10MB quota fairly easily, so `manifest.json` requests the `unlimitedStorage` permission (no extra runtime prompt).
+`profile.resumes` entries now carry the actual file, not just a label: `{ id, label, fileName, mimeType, sizeBytes, dataBase64 }`, edited from the Profile tab's Resumes section (`options.js` `renderResumes`/`readFileAsBase64`) or populated automatically by the PDF import above. `profile.defaultResumeId` marks which one gets used (starred in the UI; falls back to `resumes[0]`). On a job site, a labeled "Resume/CV upload" field classifies as the `RESUME` field type (`constants.js` `FIELD_SIGNALS.RESUME`) and gets filled by `filler.js`'s `fillFileInput` (see above). Storing files pushes `chrome.storage.local` past its default 10MB quota fairly easily, so `manifest.json` requests the `unlimitedStorage` permission (no extra runtime prompt).
 
 ## Message-passing protocol (popup/options ↔ content script)
 
 | Message type | Sent by | Handled by | Purpose |
 |---|---|---|---|
-| `JOBFILL_PING` | (available, unused by current UI) | `content.js` | Liveness + has-profile check |
+| `JOBFILL_PING` | `popup.js` | `content.js` | Liveness check — this is how the popup tells "not yet activated on this tab" (no listener, message fails) apart from "already active" |
 | `JOBFILL_GET_STATUS` | `popup.js` | `content.js` | Detected/ready/review counts + stopped flag |
 | `JOBFILL_AUTOFILL` | `popup.js`, widget button | `content.js` | Trigger `runAutofill()` |
 | `JOBFILL_SETTINGS_CHANGED` | `options.js` (broadcast to all tabs) | `content.js` | Hot-reload settings/profile/mappings, re-render widget |

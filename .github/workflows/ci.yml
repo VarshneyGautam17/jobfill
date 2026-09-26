@@ -43,6 +43,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: jobfill-extension
+          name: autofill-assistant-extension
           path: dist/*.zip
           retention-days: 30

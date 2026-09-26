@@ -1,5 +1,5 @@
 // Zips the extension's actual runtime files (not tests/scripts/CI config)
-// into dist/jobfill-v<version>.zip — the file you'd sideload elsewhere or
+// into dist/autofill-assistant-v<version>.zip — the file you'd sideload elsewhere or
 // attach to a GitHub Release. Run via `npm run package`.
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +12,7 @@ const INCLUDE = ['manifest.json', 'background', 'content', 'icons', 'options', '
 
 const distDir = path.join(ROOT, 'dist');
 fs.mkdirSync(distDir, { recursive: true });
-const outPath = path.join(distDir, `jobfill-v${manifest.version}.zip`);
+const outPath = path.join(distDir, `autofill-assistant-v${manifest.version}.zip`);
 const output = fs.createWriteStream(outPath);
 const archive = archiver('zip', { zlib: { level: 9 } });
 

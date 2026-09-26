@@ -1,4 +1,4 @@
-// JobFill — shared helper functions for content scripts.
+// AutoFill Assistant — shared helper functions for content scripts.
 (function () {
   // "candidateEmail" / "candidate_email" / "candidate-email" -> "candidate email"
   function normalize(str) {
