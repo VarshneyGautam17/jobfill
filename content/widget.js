@@ -1,4 +1,4 @@
-// JobFill — floating draggable widget (shadow DOM, isolated from page CSS).
+// AutoFill Assistant — floating draggable widget (shadow DOM, isolated from page CSS).
 // Renders detection summary, an Autofill button, the review list for
 // unresolved fields, and the post-autofill result checklist.
 (function () {
@@ -194,7 +194,7 @@
     header.className = 'jf-header';
     const title = document.createElement('div');
     title.className = 'jf-title';
-    title.textContent = '⚡ JobFill';
+    title.textContent = '⚡ AutoFill Assistant';
     const minBtn = document.createElement('button');
     minBtn.className = 'jf-iconbtn';
     minBtn.addEventListener('click', () => {

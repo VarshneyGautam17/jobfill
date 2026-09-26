@@ -1,6 +1,17 @@
-// JobFill — content script entry point. Wires detector -> mapper -> filler
+// AutoFill Assistant — content script entry point. Wires detector -> mapper -> filler
 // -> widget together, listens for popup messages, and persists learning.
+//
+// This is no longer auto-injected on every page (see manifest.json — there
+// is no content_scripts block, and no broad host permission). The popup
+// injects these files on demand, only into the current tab, only when the
+// user clicks "Detect Fields on This Page" — see popup/popup.js. Since a
+// second click re-runs this same file, guard against double-activation:
+// the DOM widget/message-listener from the first run are still alive even
+// though this is a fresh script execution with fresh (empty) closure state.
 (function () {
+  if (window.__jobfillActive) return;
+  window.__jobfillActive = true;
+
   const { DEFAULT_SETTINGS } = window.JobFillConstants;
   const hostname = location.hostname;
 
@@ -77,7 +88,7 @@
     opts = opts || {};
     const toFill = items.filter((p) => p.status === 'fill' || p.status === 'fill-review');
     if (!opts.skipConfirm && settings.confirmBeforeAutofill && toFill.length) {
-      const ok = confirm(`JobFill will fill ${toFill.length} field(s) on this page. Continue?`);
+      const ok = confirm(`AutoFill Assistant will fill ${toFill.length} field(s) on this page. Continue?`);
       if (!ok) return;
     }
     let filled = 0;
@@ -157,7 +168,7 @@
     ensureWidget();
     if (widget) {
       widget.showStopped(
-        `⚠ JobFill stopped: this page has an unusually large number of fields (50+), ` +
+        `⚠ AutoFill Assistant stopped: this page has an unusually large number of fields (50+), ` +
           `more than can be handled safely. Detection has been turned off here.`
       );
     }

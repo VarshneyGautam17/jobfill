@@ -1,8 +1,8 @@
 {
-  "name": "jobfill",
+  "name": "autofill-assistant",
   "version": "1.0.0",
   "private": true,
-  "description": "JobFill Chrome extension — no build step needed to run it.",
+  "description": "AutoFill Assistant Chrome extension — no build step needed to run it.",
   "scripts": {
     "validate": "node scripts/validate-manifest.js",
     "package": "node scripts/package-extension.js"

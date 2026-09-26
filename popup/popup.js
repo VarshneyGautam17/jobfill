@@ -1,6 +1,27 @@
-// JobFill — popup script. Shows active profile + page status and routes
-// to the options page sections.
+// AutoFill Assistant — popup script. Shows active profile + page status and
+// routes to the options page sections.
+//
+// AutoFill Assistant is click-to-activate: content/*.js is never
+// auto-injected (see manifest.json — no content_scripts, no broad host
+// permission), so a page has nothing running on it until this popup injects
+// it there via chrome.scripting.executeScript, using activeTab access from
+// the user's click that opened this very popup. That's the "Detect Fields
+// on This Page" button below; once activated the same button becomes
+// "Autofill Current Page" for the rest of this tab's lifetime (a reload
+// resets it).
 (function () {
+  const CONTENT_SCRIPT_FILES = [
+    'content/constants.js',
+    'content/utils.js',
+    'content/detector.js',
+    'content/confidence.js',
+    'content/mapper.js',
+    'content/filler.js',
+    'content/widget.js',
+    'content/observer.js',
+    'content/content.js'
+  ];
+
   const profileNameEl = document.getElementById('profileName');
   const profileTitleEl = document.getElementById('profileTitle');
   const statusEl = document.getElementById('profileStatus');
@@ -44,34 +65,66 @@
     });
   }
 
+  // mode: 'detect' (not yet injected here — button will activate it),
+  // 'autofill' (already active, ready to fill), 'disabled' (active but
+  // nothing to do / stopped).
+  function setButtonMode(mode, disabled) {
+    autofillBtn.dataset.mode = mode;
+    autofillBtn.textContent = mode === 'detect' ? 'Detect Fields on This Page' : 'Autofill Current Page';
+    autofillBtn.disabled = !!disabled;
+  }
+
+  function showStatusForActiveTab(tab) {
+    chrome.tabs.sendMessage(tab.id, { type: 'JOBFILL_GET_STATUS' }, (response) => {
+      if (chrome.runtime.lastError || !response) {
+        // Nothing has been injected into this tab yet — that's the normal,
+        // expected state, not an error.
+        pageStatusEl.textContent = 'Not active on this page yet.';
+        setButtonMode('detect', false);
+        return;
+      }
+      if (response.stopped) {
+        pageStatusEl.textContent = 'Stopped: too many fields on this page (50+). Autofill disabled here for safety.';
+        setButtonMode('autofill', true);
+        return;
+      }
+      pageStatusEl.textContent = `${response.detected} fields detected · ${response.ready} ready to fill`;
+      setButtonMode('autofill', response.ready === 0);
+    });
+  }
+
   function refreshPageStatus() {
     if (!activeProfile) return;
     withActiveTab((tab) => {
       if (!tab || !tab.id || !/^https?:/.test(tab.url || '')) {
-        pageStatusEl.textContent = 'JobFill cannot access this page.';
+        pageStatusEl.textContent = 'AutoFill Assistant cannot access this page.';
         autofillBtn.disabled = true;
         return;
       }
-      chrome.tabs.sendMessage(tab.id, { type: 'JOBFILL_GET_STATUS' }, (response) => {
-        if (chrome.runtime.lastError || !response) {
-          pageStatusEl.textContent = 'No form detected on this page yet.';
-          autofillBtn.disabled = true;
-          return;
-        }
-        if (response.stopped) {
-          pageStatusEl.textContent = 'Stopped: too many fields on this page (50+). Autofill disabled here for safety.';
-          autofillBtn.disabled = true;
-          return;
-        }
-        pageStatusEl.textContent = `${response.detected} fields detected · ${response.ready} ready to fill`;
-        autofillBtn.disabled = response.ready === 0;
-      });
+      showStatusForActiveTab(tab);
+    });
+  }
+
+  function activateOnTab(tab) {
+    pageStatusEl.textContent = 'Detecting fields…';
+    autofillBtn.disabled = true;
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_SCRIPT_FILES }, () => {
+      if (chrome.runtime.lastError) {
+        pageStatusEl.textContent = `Couldn't run here: ${chrome.runtime.lastError.message}`;
+        setButtonMode('autofill', true);
+        return;
+      }
+      showStatusForActiveTab(tab);
     });
   }
 
   autofillBtn.addEventListener('click', () => {
     withActiveTab((tab) => {
       if (!tab || !tab.id) return;
+      if (autofillBtn.dataset.mode === 'detect') {
+        activateOnTab(tab);
+        return;
+      }
       autofillBtn.disabled = true;
       chrome.tabs.sendMessage(tab.id, { type: 'JOBFILL_AUTOFILL' }, () => {
         window.close();

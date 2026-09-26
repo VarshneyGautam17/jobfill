@@ -1,4 +1,4 @@
-// JobFill — watches for dynamically-added form fields (React/Vue apps,
+// AutoFill Assistant — watches for dynamically-added form fields (React/Vue apps,
 // multi-step wizards, modals) and reports newly detected fields.
 // PRD sections 20/21: multi-step + dynamic forms.
 //
@@ -47,7 +47,7 @@
         if (!backingOff) {
           backingOff = true;
           console.warn(
-            '[JobFill] This page is mutating very frequently — pausing automatic re-scans to avoid slowing it down. ' +
+            '[AutoFill Assistant] This page is mutating very frequently — pausing automatic re-scans to avoid slowing it down. ' +
               'Use the extension popup to Autofill manually instead.'
           );
         }

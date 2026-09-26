@@ -42,5 +42,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/*.zip \
-            --title "JobFill $GITHUB_REF_NAME" \
+            --title "AutoFill Assistant $GITHUB_REF_NAME" \
             --generate-notes

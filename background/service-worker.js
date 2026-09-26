@@ -1,9 +1,10 @@
-// JobFill — background service worker. Initializes default storage on
+// AutoFill Assistant — background service worker. Initializes default storage on
 // install and opens the profile editor so first-time users aren't dropped
 // into an empty popup.
 const DEFAULT_SETTINGS = {
   showWidget: true,
   autoDetectForms: true,
+  autoFillOnDetect: false,
   confirmBeforeAutofill: false,
   fillHighConfidence: true,
   fillMediumConfidence: true,

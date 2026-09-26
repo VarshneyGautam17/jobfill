@@ -1,4 +1,4 @@
-// JobFill — writes values into the DOM. Uses the native property setter
+// AutoFill Assistant — writes values into the DOM. Uses the native property setter
 // trick so React/Vue/Angular-controlled inputs pick up the change instead
 // of silently reverting it (PRD section 44 — "React / Vue / Angular Inputs").
 (function () {
@@ -113,7 +113,7 @@
       fillTextLike(record.element, value);
       return true;
     } catch (err) {
-      console.warn('[JobFill] failed to fill field', record, err);
+      console.warn('[AutoFill Assistant] failed to fill field', record, err);
       return false;
     }
   }

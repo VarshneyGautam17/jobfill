@@ -1,4 +1,4 @@
-// JobFill — confidence scoring. Combines several weak signals (name, id,
+// AutoFill Assistant — confidence scoring. Combines several weak signals (name, id,
 // placeholder, label, aria-label, nearby text, autocomplete, input type)
 // into a 0-100 confidence score per candidate FIELD_TYPE, per PRD section 11.
 (function () {

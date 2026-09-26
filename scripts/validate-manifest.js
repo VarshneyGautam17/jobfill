@@ -1,6 +1,11 @@
 // Validates manifest.json: it must parse, declare manifest_version 3, and
-// every file it references (icons, popup, options page, background script,
-// content scripts/css) must actually exist. Run via `npm run validate`.
+// every file it references (icons, popup, options page, background script)
+// must actually exist. Also checks the content-script files listed in
+// popup/popup.js's CONTENT_SCRIPT_FILES — the extension is click-to-activate
+// (see popup/popup.js), so these are injected on demand via
+// chrome.scripting.executeScript rather than declared in manifest.json's
+// content_scripts, and nothing else would catch a typo'd/missing one.
+// Run via `npm run validate`.
 const fs = require('fs');
 const path = require('path');
 
@@ -39,6 +44,19 @@ if (manifest.background) requireFile(manifest.background.service_worker, 'backgr
   (cs.css || []).forEach((p) => requireFile(p, `content_scripts[${i}].css`));
   if (!cs.matches || !cs.matches.length) errors.push(`content_scripts[${i}] has no "matches" patterns`);
 });
+
+const popupJsPath = path.join(ROOT, 'popup', 'popup.js');
+if (fs.existsSync(popupJsPath)) {
+  const popupJs = fs.readFileSync(popupJsPath, 'utf8');
+  const match = popupJs.match(/CONTENT_SCRIPT_FILES\s*=\s*\[([\s\S]*?)\]/);
+  if (match) {
+    const files = Array.from(match[1].matchAll(/['"]([^'"]+)['"]/g)).map((m) => m[1]);
+    if (!files.length) errors.push('popup.js CONTENT_SCRIPT_FILES parsed to an empty list');
+    files.forEach((p) => requireFile(p, 'popup.js CONTENT_SCRIPT_FILES'));
+  } else {
+    errors.push('could not find CONTENT_SCRIPT_FILES in popup/popup.js to validate');
+  }
+}
 
 if (errors.length) {
   console.error(`\n✗ manifest.json validation failed (${errors.length} issue(s)):\n`);

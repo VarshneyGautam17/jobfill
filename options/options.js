@@ -1,4 +1,4 @@
-// JobFill — options page. Profile editor, profile manager, learned field
+// AutoFill Assistant — options page. Profile editor, profile manager, learned field
 // mappings, application questions, privacy controls, and settings.
 (function () {
   const { FIELD_TYPES, FIELD_LABELS, DEFAULT_SETTINGS } = window.JobFillConstants;
@@ -195,7 +195,7 @@
       const star = document.createElement('span');
       star.className = 'star' + (isDefault ? ' active' : '');
       star.textContent = '★';
-      star.title = 'Use this resume when JobFill autofills a "Resume/CV upload" field';
+      star.title = 'Use this resume when AutoFill Assistant fills a "Resume/CV upload" field';
       star.style.cursor = 'pointer';
       star.addEventListener('click', () => {
         profile.defaultResumeId = resume.id;
@@ -250,7 +250,7 @@
       info.style.marginTop = '4px';
       info.textContent = resume.fileName
         ? `${resume.fileName} (${formatBytes(resume.sizeBytes)})${isDefault ? ' — used for autofill' : ''}`
-        : 'No file attached yet — upload one so JobFill can attach it to a "Resume/CV" field for you.';
+        : 'No file attached yet — upload one so AutoFill Assistant can attach it to a "Resume/CV" field for you.';
       card.appendChild(info);
 
       container.appendChild(card);
@@ -342,7 +342,7 @@
         ? `Filled ${filledCount} field(s) and attached this file as your resume for upload fields — review below, then click Save Profile.`
         : 'Attached this file as your resume for upload fields, but could not confidently pull any profile fields from it — fill those in manually.';
     } catch (err) {
-      console.error('[JobFill] resume import failed', err);
+      console.error('[AutoFill Assistant] resume import failed', err);
       msg.style.color = '#c0392b';
       msg.textContent = `Couldn't read that PDF (${err.message || err}). Try a different export, or fill in manually.`;
     } finally {
@@ -480,7 +480,7 @@
     if (!file) return;
     readFileAsJSON(file, (err, data) => {
       if (err || !data || !data.profiles) {
-        alert('That file does not look like a JobFill profiles export.');
+        alert('That file does not look like an AutoFill Assistant profiles export.');
         return;
       }
       Object.values(data.profiles).forEach((incoming) => {
@@ -515,7 +515,7 @@
     container.innerHTML = '';
     const domains = Object.keys(siteMappings);
     if (!domains.length) {
-      container.innerHTML = '<p class="hint">No learned mappings yet. Correct a field on any job site and JobFill will remember it here.</p>';
+      container.innerHTML = '<p class="hint">No learned mappings yet. Correct a field on any site and AutoFill Assistant will remember it here.</p>';
       return;
     }
     domains.forEach((domain) => {
@@ -633,17 +633,17 @@
     if (!file) return;
     readFileAsJSON(file, (err, data) => {
       if (err || typeof data !== 'object') {
-        alert('That file does not look like a valid JobFill export.');
+        alert('That file does not look like a valid AutoFill Assistant export.');
         return;
       }
-      if (!confirm('This will overwrite your current JobFill data with the imported file. Continue?')) return;
+      if (!confirm('This will overwrite your current AutoFill Assistant data with the imported file. Continue?')) return;
       chrome.storage.local.set(data, () => loadAll(() => activateTab(currentTab())));
       e.target.value = '';
     });
   });
 
   document.getElementById('clearAllBtn').addEventListener('click', () => {
-    if (!confirm('Delete ALL JobFill data (profiles, mappings, settings)? This cannot be undone.')) return;
+    if (!confirm('Delete ALL AutoFill Assistant data (profiles, mappings, settings)? This cannot be undone.')) return;
     chrome.storage.local.clear(() => {
       profiles = {};
       activeProfileId = null;

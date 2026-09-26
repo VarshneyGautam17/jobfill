@@ -1,4 +1,4 @@
-// JobFill — maps detected field records to profile data, respecting
+// AutoFill Assistant — maps detected field records to profile data, respecting
 // learned site-specific mappings (section 18/19) and confidence levels.
 (function () {
   const { PROFILE_PATHS, FIELD_LABELS } = window.JobFillConstants;
