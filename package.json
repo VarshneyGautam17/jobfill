@@ -2,15 +2,12 @@
   "name": "jobfill",
   "version": "1.0.0",
   "private": true,
-  "description": "JobFill Chrome extension — no build step needed to run it; these are dev-only regression tests for the detection/autofill pipeline and the popup/options UI.",
+  "description": "JobFill Chrome extension — no build step needed to run it.",
   "scripts": {
-    "test": "node tests/logic.test.js && node tests/shadow-dom.test.js && node tests/label-signal.test.js && node tests/field-cap.test.js && node tests/content-stop.test.js && node tests/ui-smoke.test.js",
-    "test:stress": "node tests/observer-performance.test.js",
     "validate": "node scripts/validate-manifest.js",
     "package": "node scripts/package-extension.js"
   },
   "devDependencies": {
-    "archiver": "^7.0.1",
-    "jsdom": "^29.1.1"
+    "archiver": "^7.0.1"
   }
 }

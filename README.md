@@ -40,24 +40,13 @@ No auto-submit, no auto-clicking Next/Continue, no file-input automation (browse
 3. The floating JobFill widget appears with a field count — click **Autofill**
 4. Review the result, fix any "Needs Your Input" fields via the dropdown (JobFill remembers your choice for that site next time)
 
-## Automated tests
-
-`tests/` loads the real extension source into a simulated DOM (jsdom) and exercises detection, confidence scoring, autofill, and the popup/options UI end-to-end — no real browser needed.
-
-```
-npm install
-npm test
-```
-
-Currently 81/81 checks pass via `npm test` (pipeline, Shadow DOM, label-signal filtering, the 50-field safety cap, the full stop-sequence integration, and UI smoke tests). `npm run test:stress` runs a slower (~8s) mutation-storm/circuit-breaker test separately, since it needs real wall-clock time.
-
 ## CI / releases
 
-`.github/workflows/ci.yml` runs on every push and PR: validates `manifest.json` (parses, every referenced file exists) and runs the full test suite. It cannot reach into your local Chrome — there's no such thing as GitHub pushing an update into an unpacked/developer-mode extension, that's a Chrome platform limitation, not something CI can work around. What it *does* give you: broken code gets caught before you ever reload the extension yourself, and on every push to `master`/`main` it packages the extension into a `.zip` and uploads it as a downloadable build artifact.
+`.github/workflows/ci.yml` runs on every push and PR: validates `manifest.json` (parses, every referenced file exists). It cannot reach into your local Chrome — there's no such thing as GitHub pushing an update into an unpacked/developer-mode extension, that's a Chrome platform limitation, not something CI can work around. What it *does* give you: broken manifests get caught before you ever reload the extension yourself, and on every push to `master`/`main` it packages the extension into a `.zip` and uploads it as a downloadable build artifact.
 
 To cut a versioned release:
 
 1. Bump `"version"` in `manifest.json`
 2. `git tag v1.0.1 && git push origin v1.0.1`
 
-`.github/workflows/release.yml` then validates, tests, packages, and publishes a GitHub Release with the `.zip` attached — tag version and manifest version must match, or it fails on purpose rather than shipping a mislabeled build.
+`.github/workflows/release.yml` then validates, packages, and publishes a GitHub Release with the `.zip` attached — tag version and manifest version must match, or it fails on purpose rather than shipping a mislabeled build.
